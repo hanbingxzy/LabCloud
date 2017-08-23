@@ -11,3 +11,5 @@
 2. 迭代式贡献享用交流链。 -> N1 -> N2 -> N3 ......
 3. 发展参与者
 4. 成长是有瓶颈的，升迁进入更高级云组织（如OpenStack组织）
+
+http://www.cnblogs.com/chesterphp/p/3577924.html Github上如何给别人贡献代码(转)
