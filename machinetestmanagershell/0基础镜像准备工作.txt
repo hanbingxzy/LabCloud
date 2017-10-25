@@ -1,13 +1,13 @@
-²½Öè£¨centos7£©£º
-1£¬¹Ø±Õ·À»ğÇ½
+æ­¥éª¤ï¼ˆcentos7ï¼‰ï¼š
+1ï¼Œå…³é—­é˜²ç«å¢™
 firewall-cmd --state
 systemctl stop firewalld.service
 systemctl disable firewalld.service
-2£¬¹Ø±ÕSELINUX
+2ï¼Œå…³é—­SELINUX
 sed -i 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
-3,ÉèÖÃ¿ª»úµÈ´ıÊ±¼ä
+3,è®¾ç½®å¼€æœºç­‰å¾…æ—¶é—´
 sed -i 's/set timeout=5/set timeout=1/g' /boot/grub2/grub.cfg
-4,¸üĞÂyumÔ´»òÕßÅäÖÃ¹úÄÚ¾µÏñ163²Ö¿â
+4,æ›´æ–°yumæºæˆ–è€…é…ç½®å›½å†…é•œåƒ163ä»“åº“
 curl "http://202.193.80.124/" -H "Pragma: no-cache" -H "Origin: http://202.193.80.124" -H "Accept-Encoding: gzip, deflate" -H "Accept-Language: zh-CN,zh;q=0.8" -H "Upgrade-Insecure-Requests: 1" -H "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.98 Safari/537.36" -H "Content-Type: application/x-www-form-urlencoded" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" -H "Cache-Control: max-age=0" -H "Referer: http://202.193.80.124/" -H "Connection: keep-alive" --data "DDDDD=g102016452&upass=03141b2b5032ba8c682103364b93ce2a123456781&R1=0&R2=1&para=00&0MKKey=123456" --compressed | grep "Please don't forget to log out after you have finished."
 yum clean all
 yum --enablerepo=extras clean metadata
@@ -15,16 +15,16 @@ yum -y update
 yum install -y deltarpm
 yum provides '*/applydeltarpm'
 
-ÅäÖÃĞÂµÄ¹úÄÚ¾µÏñ163yumÔ´
-ÏÂÔØrepoÎÄ¼ş 
+é…ç½®æ–°çš„å›½å†…é•œåƒ163yumæº
+ä¸‹è½½repoæ–‡ä»¶ 
 cd /etc/yum.repos.d
 mv CentOS-Base.repo CentOS-Base.repo.bk  
 yum install -y wget
 wget -O CentOS-Base.repo http://mirrors.163.com/.help/CentOS6-Base-163.repo 
-Ö´ĞĞyumÔ´¸üĞÂ
-Çå³ıÒÔÇ°Ê¹ÓÃyumµÄ»º´æ
+æ‰§è¡Œyumæºæ›´æ–°
+æ¸…é™¤ä»¥å‰ä½¿ç”¨yumçš„ç¼“å­˜
 yum clean all      
-½¨Á¢Ò»¸ö»º´æ£¬ÒÔºó·½±ãÔÚ»º´æÖĞËÑË÷
+å»ºç«‹ä¸€ä¸ªç¼“å­˜ï¼Œä»¥åæ–¹ä¾¿åœ¨ç¼“å­˜ä¸­æœç´¢
 yum makecache
 yum --enablerepo=extras clean metadata
 yum -y update
@@ -34,31 +34,31 @@ yum provides '*/applydeltarpm'
 
 
 
-#ÏÂÃæÊÇ±Ê¼Ç£¬½ö¹©²Î¿¼
-1£¬centos7Óëcentos6²»Í¬  
-    ½«ÍøÂçÉèÖÃ³ÉÇÅ½Ó²¢¿ªÆô£¬»á¿´µ½Íø¿¨×Ô¶¯·ÖÅäµÄIPµØÖ·£¬²»ÓÃÔÙÊÖ¶¯ÉèÖÃÅäÖÃÎÄ¼ş /etc/sysconfig/network-scripts/ifcfg-eth0£¬ ÎÄ¼şÖĞ½«ONBOOT=yesÉèÖÃÎª  yes
-    ¹Ø±Õ·À»ğÇ½ÒÔ¼°SELINUX¹Ø±Õ
-    CentOS 7.0Ä¬ÈÏÊ¹ÓÃµÄÊÇfirewall×÷Îª·À»ğÇ½£¬ÕâÀï¸ÄÎªiptables·À»ğÇ½²½Öè¡£
-     firewall-cmd --state #²é¿´Ä¬ÈÏ·À»ğÇ½×´Ì¬£¨¹Ø±ÕºóÏÔÊ¾notrunning£¬¿ªÆôºóÏÔÊ¾running£©
-     systemctl stop firewalld.service #Í£Ö¹firewall
-     systemctl disable firewalld.service #½ûÖ¹firewall¿ª»úÆô¶¯
-    Centos7,Ã»ÓĞiptables.service  µ«ÊÇÓĞiptablesÕâ¸öÃüÁî
-    SELINUX¹Ø±ÕÓëÆäÏàÍ¬£ºĞŞ¸Ä/etc/selinux/config ÎÄ¼ş   ½«SELINUX=enforcing¸ÄÎªSELINUX=disabled ÖØÆô
-2£¬centos7ÉèÖÃ¿ª»úµÈ´ıÊ±¼ä
+#ä¸‹é¢æ˜¯ç¬”è®°ï¼Œä»…ä¾›å‚è€ƒ
+1ï¼Œcentos7ä¸centos6ä¸åŒ  
+    å°†ç½‘ç»œè®¾ç½®æˆæ¡¥æ¥å¹¶å¼€å¯ï¼Œä¼šçœ‹åˆ°ç½‘å¡è‡ªåŠ¨åˆ†é…çš„IPåœ°å€ï¼Œä¸ç”¨å†æ‰‹åŠ¨è®¾ç½®é…ç½®æ–‡ä»¶ /etc/sysconfig/network-scripts/ifcfg-eth0ï¼Œ æ–‡ä»¶ä¸­å°†ONBOOT=yesè®¾ç½®ä¸º  yes
+    å…³é—­é˜²ç«å¢™ä»¥åŠSELINUXå…³é—­
+    CentOS 7.0é»˜è®¤ä½¿ç”¨çš„æ˜¯firewallä½œä¸ºé˜²ç«å¢™ï¼Œè¿™é‡Œæ”¹ä¸ºiptablesé˜²ç«å¢™æ­¥éª¤ã€‚
+     firewall-cmd --state #æŸ¥çœ‹é»˜è®¤é˜²ç«å¢™çŠ¶æ€ï¼ˆå…³é—­åæ˜¾ç¤ºnotrunningï¼Œå¼€å¯åæ˜¾ç¤ºrunningï¼‰
+     systemctl stop firewalld.service #åœæ­¢firewall
+     systemctl disable firewalld.service #ç¦æ­¢firewallå¼€æœºå¯åŠ¨
+    Centos7,æ²¡æœ‰iptables.service  ä½†æ˜¯æœ‰iptablesè¿™ä¸ªå‘½ä»¤
+    SELINUXå…³é—­ä¸å…¶ç›¸åŒï¼šä¿®æ”¹/etc/selinux/config æ–‡ä»¶   å°†SELINUX=enforcingæ”¹ä¸ºSELINUX=disabled é‡å¯
+2ï¼Œcentos7è®¾ç½®å¼€æœºç­‰å¾…æ—¶é—´
 vi /boot/grub2/grub.cfg
-set timeout=5£¨½¨ÒéĞŞ¸Ä³É1£¬²»ÒªĞŞ¸Ä³É0£¬ĞŞ¸ÄÍê³Éºó£¬ÖØÆô¼´¿É¿´µ½Ğ§¹û£© ×¢ÒâÊÇÖØÆô²»ÊÇ¹Ø»ú¿ª»ú
+set timeout=5ï¼ˆå»ºè®®ä¿®æ”¹æˆ1ï¼Œä¸è¦ä¿®æ”¹æˆ0ï¼Œä¿®æ”¹å®Œæˆåï¼Œé‡å¯å³å¯çœ‹åˆ°æ•ˆæœï¼‰ æ³¨æ„æ˜¯é‡å¯ä¸æ˜¯å…³æœºå¼€æœº
 
-//3 ĞŞ¸ÄÖ÷»úÃûÓë¶ÔÓ¦µÄÖ÷»úÃûÓ³Éä
-///   centos7Óë6²»Í¬£¬ĞŞ¸ÄÖ÷»úÃû etc/hostname ÖĞÖ±½ÓĞ´Ö÷»úÃû   etc/hosts ÖĞÅäÖÃÖ÷»úÃûÓ³Éä
+//3 ä¿®æ”¹ä¸»æœºåä¸å¯¹åº”çš„ä¸»æœºåæ˜ å°„
+///   centos7ä¸6ä¸åŒï¼Œä¿®æ”¹ä¸»æœºå etc/hostname ä¸­ç›´æ¥å†™ä¸»æœºå   etc/hosts ä¸­é…ç½®ä¸»æœºåæ˜ å°„
 
 
-3£¬ÁªÍø¸úĞÂyumÔ´
+3ï¼Œè”ç½‘è·Ÿæ–°yumæº
 connect
 yum clean all
 yum --enablerepo=extras clean metadata
 yum -y update
 
-4£¬°²×°deltarpm²¢Ö´ĞĞyum provides '*/applydeltarpm'£¬Ò²ÊÇÒ»¸öÈí¼ş£¬²»ÖªµÀÊÇ¸ÉÉ¶µÄ£¬Ö»ÖªµÀÊÇ½â¾ö
+4ï¼Œå®‰è£…deltarpmå¹¶æ‰§è¡Œyum provides '*/applydeltarpm'ï¼Œä¹Ÿæ˜¯ä¸€ä¸ªè½¯ä»¶ï¼Œä¸çŸ¥é“æ˜¯å¹²å•¥çš„ï¼ŒåªçŸ¥é“æ˜¯è§£å†³
 Error: Delta RPMs disabled because /usr/bin/applydeltarpm not installed.
 yum install -y deltarpm
 yum provides '*/applydeltarpm'

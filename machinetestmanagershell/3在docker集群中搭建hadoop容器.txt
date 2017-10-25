@@ -1,20 +1,20 @@
-½ö½öÊÇ°²×°hadoop
-ËùÒÔĞèÒªÈı¸öÎÄ¼ş£ºhadoop.sh¡¢setupHadoopMaster.sh¡¢setupHadoopSalve.sh
-ÆäÖĞsetupHadoopMaster.sh¡¢setupHadoopSalve.shÕâÁ½¸öÎÄ¼şĞèÒªºÍjdkÑ¹Ëõ°üÒÔ¼°hadoopÑ¹Ëõ°ü·ÅÖÃµ½½ÚµãµÄÍ¬Ò»¸öÄ¿Â¼ÏÂ
-  //hadoop Ïà¹Ø¶¨Òå
+ä»…ä»…æ˜¯å®‰è£…hadoop
+æ‰€ä»¥éœ€è¦ä¸‰ä¸ªæ–‡ä»¶ï¼šhadoop.shã€setupHadoopMaster.shã€setupHadoopSalve.sh
+å…¶ä¸­setupHadoopMaster.shã€setupHadoopSalve.shè¿™ä¸¤ä¸ªæ–‡ä»¶éœ€è¦å’Œjdkå‹ç¼©åŒ…ä»¥åŠhadoopå‹ç¼©åŒ…æ”¾ç½®åˆ°èŠ‚ç‚¹çš„åŒä¸€ä¸ªç›®å½•ä¸‹
+  //hadoop ç›¸å…³å®šä¹‰
   var hadoopdefine = [{
-    "hadoopsum":"3",  									 hadoop¾µÏñµÄÊıÄ¿
-	"hadoopPwd":"hadoop",								 ¾µÏñÖĞµÄÏµÍ³ÃÜÂë
-	"serverjdkname":"jdk-7u79-linux-x64.tar.gz",		 jdkÑ¹Ëõ°ü
-	"serverhadoopname":"hadoop-2.6.0.tar.gz",			 hadoopÑ¹Ëõ°ü
-	"HadoopJdkDockerfile":"/root/software/",			 hadoop.sh¡¢setupHadoopMaster.sh¡¢setupHadoopSalve.shµÄ·ÅÖÃÄ¿Â¼£¬ÒÔ¼°DockerfileµÄ·ÅÖÃÄ¿Â¼
-	"hadoopInstallIp":"172.16.2.1" 						 hadoop°²×°½ÚµãµÄIPµØÖ·
+    "hadoopsum":"3",  									 hadoopé•œåƒçš„æ•°ç›®
+	"hadoopPwd":"hadoop",								 é•œåƒä¸­çš„ç³»ç»Ÿå¯†ç 
+	"serverjdkname":"jdk-7u79-linux-x64.tar.gz",		 jdkå‹ç¼©åŒ…
+	"serverhadoopname":"hadoop-2.6.0.tar.gz",			 hadoopå‹ç¼©åŒ…
+	"HadoopJdkDockerfile":"/root/software/",			 hadoop.shã€setupHadoopMaster.shã€setupHadoopSalve.shçš„æ”¾ç½®ç›®å½•ï¼Œä»¥åŠDockerfileçš„æ”¾ç½®ç›®å½•
+	"hadoopInstallIp":"172.16.2.1" 						 hadoopå®‰è£…èŠ‚ç‚¹çš„IPåœ°å€
   }];
   
-  1£¬ÏÈÔÚ"hadoopInstallIp":"172.16.2.1"ĞÂ½¨Ò»¸ö"HadoopJdkDockerfile":"/root/software/"Ä¿Â¼
-  2£¬Ê¹ÓÃSecureCRT»òÕßwinscp»òÕßputty½«Á½¸öÎÄ¼ş£ºsetupHadoopMaster.sh¡¢setupHadoopSalve.shÁ½¸ö°üjdk-7u79-linux-x64.tar.gz¡¢hadoop-2.6.0.tar.gzÍÏÖÁ/root/softwareÄ¿Â¼ÏÂ
-  3£¬ÔÚbat´ò¿ªµÄ´°¿ÚÖĞÖ´ĞĞ£ºdockercloud cloud.install_hadoop() £¬¼´¿É
+  1ï¼Œå…ˆåœ¨"hadoopInstallIp":"172.16.2.1"æ–°å»ºä¸€ä¸ª"HadoopJdkDockerfile":"/root/software/"ç›®å½•
+  2ï¼Œä½¿ç”¨SecureCRTæˆ–è€…winscpæˆ–è€…puttyå°†ä¸¤ä¸ªæ–‡ä»¶ï¼šsetupHadoopMaster.shã€setupHadoopSalve.shä¸¤ä¸ªåŒ…jdk-7u79-linux-x64.tar.gzã€hadoop-2.6.0.tar.gzæ‹–è‡³/root/softwareç›®å½•ä¸‹
+  3ï¼Œåœ¨batæ‰“å¼€çš„çª—å£ä¸­æ‰§è¡Œï¼šdockercloud cloud.install_hadoop() ï¼Œå³å¯
   
-  Îª½â¾öµÄÎÊÌâ
-  1£¬hadoopµÄnative±¾µØ¿âÅäÖÃÎÊÌâ
-  2£¬ËùÓĞÎÄ¼şµÄÔ´ÏÂÔØÎÊÌâ
+  ä¸ºè§£å†³çš„é—®é¢˜
+  1ï¼Œhadoopçš„nativeæœ¬åœ°åº“é…ç½®é—®é¢˜
+  2ï¼Œæ‰€æœ‰æ–‡ä»¶çš„æºä¸‹è½½é—®é¢˜

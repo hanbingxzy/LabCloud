@@ -1,21 +1,21 @@
-����MySQL����׼��
-�����������������ͬһ��Ŀ¼��
-my.cnf  ���ݿ�����ñ����ļ�
-privileges.sql ���ݿ����Ȩ�ļ�
-schema.sql ��Ŀ���ݿ��ļ�
-setup.sh ���ݿ⾵�����������ļ�
+部署MySQL服务：准备
+将其放置宿主主机的同一级目录下
+my.cnf  数据库的配置编码文件
+privileges.sql 数据库的授权文件
+schema.sql 项目数据库文件
+setup.sh 数据库镜像启动核心文件
 
-����Tomcat����׼��
-cyclingbgtv1.war Ϊ����������Ŀ��war��  ����Ҫע��  ���ǰ�����ݿ����������滻�����ݿ⾵����ʵĵ�ַ
+部署Tomcat服务：准备
+cyclingbgtv1.war 为待发布的项目的war包  这里要注意  打包前将数据库链接密码替换成数据库镜像访问的地址
 
 
-������µ����ݿ⾵���ļ�����
+编译成新的数据库镜像文件命令
 docker build -t taxisql:1 /root/zqqDocker/taxisql
-���о����ļ�����  -d:��ʾ�Ժ�̨��ʽ���� -pΪ��¶�˿� -eΪ���õĳ�ʼ���� --name����ñ��� ����ɾ����ֹͣ �������Ҫ���еľ���
+运行镜像文件命令  -d:表示以后台方式运行 -p为暴露端口 -e为设置的初始密码 --name是起得别名 便于删除与停止 最后则是要运行的镜像
 docker run -d -p 13306:3306 -e MYSQL_ROOT_PASSWORD=123 --name sqlone taxisql:1
-�������е�����
+进入运行的容器
 docker exec -it contiandID /bin/bash
 
-������µ�Tomcat�����ļ�����
+编译成新的Tomcat镜像文件命令
 docker run -d -p 8090:8080 --name taxitomcatone taxitomcat:1
 docker exec -it 81ca990fd36f /bin/bash

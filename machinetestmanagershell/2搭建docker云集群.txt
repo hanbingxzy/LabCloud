@@ -1,54 +1,54 @@
-1£¬¸´ÖÆdockercloud.jsÎÄ¼ş£¬ĞŞ¸ÄÀïÃæµÄ²ÎÊı
-   ÕâÁ½¸ö¼¯ºÏÄ¬ÈÏµÚÒ»¸ö·Ö±ğÎª£ºmaster½ÚµãµÄ£ºÖ÷»úIPÒÔ¼°Ö÷»úÃû
-   machines£ºÎªÖ÷»ú¸÷¸ö½ÚµãµÄIP¼¯ºÏ£¬Õâ¸öµÃÊÖ¶¯ÊÕ¼¯
-   ÎïÀí»úÌîĞ´·½Ê½{"IP":"172.16.2.133", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"}
-   ĞéÄâ»úÌîĞ´·½Ê½{"IP":"172.16.2.1", "isMaster":true, "path":"E:\\VirtualMachines\\docker1\\docker1.vmx"}
-   isMaster£ºÊÇ·ñÎªÖ÷½Úµã
-   isPhysical£ºÊÇ·ñÎªÎïÀí»ú
-   MAC£ºÎïÀí»úµÄMacµØÖ·
-   path£ºÎª·şÎñ»úÖĞµÄĞéÄâ»úÎ»ÖÃ
-   ×¢Òâ£ºcentos7µÄMacµØÖ·»»³Éether ×Ö¶ÎÖµÁË
-   plinkÊ¹ÓÃ£ºÊ×´ÎÊ¹ÓÃÊ±ÓĞ¸ö½»»¥ÌáÊ¾£ºÊÇ·ñÒª±£´æÃØÔ¿key£¬ËùÒÔÔÚ³ÌĞò½Å±¾ÖĞ»áÓĞÒ»¸ö½»»¥£¬ĞèÒªÊäÈëY/N£¬ÃüÁî²ÎÊıÖĞÓĞÒ»¸ö-batch¹Ø±Õ½»»¥ÌáÊ¾£¬²»ÖªÊÇ·ñºÃÓÃ
+1ï¼Œå¤åˆ¶dockercloud.jsæ–‡ä»¶ï¼Œä¿®æ”¹é‡Œé¢çš„å‚æ•°
+   è¿™ä¸¤ä¸ªé›†åˆé»˜è®¤ç¬¬ä¸€ä¸ªåˆ†åˆ«ä¸ºï¼šmasterèŠ‚ç‚¹çš„ï¼šä¸»æœºIPä»¥åŠä¸»æœºå
+   machinesï¼šä¸ºä¸»æœºå„ä¸ªèŠ‚ç‚¹çš„IPé›†åˆï¼Œè¿™ä¸ªå¾—æ‰‹åŠ¨æ”¶é›†
+   ç‰©ç†æœºå¡«å†™æ–¹å¼{"IP":"172.16.2.133", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"}
+   è™šæ‹Ÿæœºå¡«å†™æ–¹å¼{"IP":"172.16.2.1", "isMaster":true, "path":"E:\\VirtualMachines\\docker1\\docker1.vmx"}
+   isMasterï¼šæ˜¯å¦ä¸ºä¸»èŠ‚ç‚¹
+   isPhysicalï¼šæ˜¯å¦ä¸ºç‰©ç†æœº
+   MACï¼šç‰©ç†æœºçš„Macåœ°å€
+   pathï¼šä¸ºæœåŠ¡æœºä¸­çš„è™šæ‹Ÿæœºä½ç½®
+   æ³¨æ„ï¼šcentos7çš„Macåœ°å€æ¢æˆether å­—æ®µå€¼äº†
+   plinkä½¿ç”¨ï¼šé¦–æ¬¡ä½¿ç”¨æ—¶æœ‰ä¸ªäº¤äº’æç¤ºï¼šæ˜¯å¦è¦ä¿å­˜ç§˜é’¥keyï¼Œæ‰€ä»¥åœ¨ç¨‹åºè„šæœ¬ä¸­ä¼šæœ‰ä¸€ä¸ªäº¤äº’ï¼Œéœ€è¦è¾“å…¥Y/Nï¼Œå‘½ä»¤å‚æ•°ä¸­æœ‰ä¸€ä¸ª-batchå…³é—­äº¤äº’æç¤ºï¼Œä¸çŸ¥æ˜¯å¦å¥½ç”¨
    
-   ×¢Òâ£ºÔÚÊ¹ÓÃMacÖØÆôÔ¶³ÌÖ÷»úÊ±£¬ĞèÒªÔÙ¹Ø»úÊ±Ê¹Íø¿¨±£³Ö»½ĞÑ£¬ÏêÏ¸ÁË½âÇë¿´haltº¯Êı
+   æ³¨æ„ï¼šåœ¨ä½¿ç”¨Macé‡å¯è¿œç¨‹ä¸»æœºæ—¶ï¼Œéœ€è¦å†å…³æœºæ—¶ä½¿ç½‘å¡ä¿æŒå”¤é†’ï¼Œè¯¦ç»†äº†è§£è¯·çœ‹haltå‡½æ•°
    
-   hostnames£ºÎªÖ÷»ú¸÷¸ö½ÚµãËùÒªÉèÖÃµÄÖ÷»úÃû
-   machineName£º
-    "master_hostname":"docker1",        dockerÖ÷½ÚµãµÄÖ÷»úÃû
-	"KUBE_master_hostname":"docker1",   kubernetesÖ÷½ÚµãµÄÖ÷»úÃû
-	"registryHostname":"docker2",       registryHostname¾µÏñ½ÚµãËùÔÚµÄ½ÚµãµÄÖ÷»úÃû
-	"registryHostIP":"172.16.2.95",     registryHostname¾µÏñ½ÚµãËùÔÚµÄ½ÚµãµÄIP
-	"apiserverHostname":"docker1",      apiserverHostnameÊÇkubernetesµÄapiserver·şÎñ½ÚµãµÄÖ÷»úÃûÃû³Æ
-    "etcdHostname":"docker1",           etcdHostnameÊÇetc×é¼şµÄÖ÷»úÃû³Æ
-	"apiserver_host":"172.16.2.1",    apiserver_hostÊÇkubernetesµÄapiserver·şÎñ½ÚµãµÄIPµØÖ·
-	"kube_master_url":"172.16.2.1"    kube_master_urlÊÇkubernetesÖ÷½ÚµãµÄIPµØÖ·
+   hostnamesï¼šä¸ºä¸»æœºå„ä¸ªèŠ‚ç‚¹æ‰€è¦è®¾ç½®çš„ä¸»æœºå
+   machineNameï¼š
+    "master_hostname":"docker1",        dockerä¸»èŠ‚ç‚¹çš„ä¸»æœºå
+	"KUBE_master_hostname":"docker1",   kubernetesä¸»èŠ‚ç‚¹çš„ä¸»æœºå
+	"registryHostname":"docker2",       registryHostnameé•œåƒèŠ‚ç‚¹æ‰€åœ¨çš„èŠ‚ç‚¹çš„ä¸»æœºå
+	"registryHostIP":"172.16.2.95",     registryHostnameé•œåƒèŠ‚ç‚¹æ‰€åœ¨çš„èŠ‚ç‚¹çš„IP
+	"apiserverHostname":"docker1",      apiserverHostnameæ˜¯kubernetesçš„apiserveræœåŠ¡èŠ‚ç‚¹çš„ä¸»æœºååç§°
+    "etcdHostname":"docker1",           etcdHostnameæ˜¯etcç»„ä»¶çš„ä¸»æœºåç§°
+	"apiserver_host":"172.16.2.1",    apiserver_hostæ˜¯kubernetesçš„apiserveræœåŠ¡èŠ‚ç‚¹çš„IPåœ°å€
+	"kube_master_url":"172.16.2.1"    kube_master_urlæ˜¯kubernetesä¸»èŠ‚ç‚¹çš„IPåœ°å€
    
-  VMware_dir //¶¨ÒåĞéÄâ»úµÄ°²×°Ä¿Â¼  
-  suzu_host_ip //ËŞÖ÷Ö÷»úIPµØÖ·
-  suzu_host_user //ËŞÖ÷Ö÷»úµÇÂ¼ÓÃ»§Ãû
-  suzu_host_pwd //ËŞÖ÷Ö÷»úµÇÂ¼ÃÜÂë
+  VMware_dir //å®šä¹‰è™šæ‹Ÿæœºçš„å®‰è£…ç›®å½•  
+  suzu_host_ip //å®¿ä¸»ä¸»æœºIPåœ°å€
+  suzu_host_user //å®¿ä¸»ä¸»æœºç™»å½•ç”¨æˆ·å
+  suzu_host_pwd //å®¿ä¸»ä¸»æœºç™»å½•å¯†ç 
    
    
-   pwdÎªÏµÍ³µÄĞéÄâ»úµÄÔ´¿ª»úÃÜÂë£¬ÕâÀïÍÆ¼öÊ¹ÓÃÍ¬Ò»¸ö¿ª»úÃÜÂë
+   pwdä¸ºç³»ç»Ÿçš„è™šæ‹Ÿæœºçš„æºå¼€æœºå¯†ç ï¼Œè¿™é‡Œæ¨èä½¿ç”¨åŒä¸€ä¸ªå¼€æœºå¯†ç 
    
-	  localHOSTS:localHOSTS, 										Ïò±¾µØhostsÎÄ¼şÖĞ×·¼ÓĞéÄâ»úµÄÖ÷»úÃûÓëIPµØÖ·Ó³Éä   
-	  setupIPhostname:setupIPhostname, 								ÉèÖÃĞéÄâ»úµÄIPÓëÖ÷»úÃûÓ³Éä£¬ÒÔ¼°Ö÷»úÃû
-	  restartAllVirtualMachines:restartAllVirtualMachines, 			ÖØÆôËùÓĞĞéÄâ»ú
-	  runningState:runningState,									²é¿´ĞéÄâ»úµÄ×´Ì¬
-	  common_init_MsaterSalve:common_init_MsaterSalve,				Ö÷½ÚµãºÍ´Ó½ÚµãÖĞetcd¡¢kubernetes¡¢flannel¹²Í¬µÄÅäÖÃ
-	  only_init_master:only_init_master,							Ö÷½ÚµãµÄµ¥¶ÀĞèÒªµÄÅäÖÃ
-	  only_init_salve:only_init_salve,								´Ó½ÚµãµÄµ¥¶ÀĞèÒªµÄÅäÖÃ
-	  start_docker_cloud:start_docker_cloud,						¿ªÆôdocker¼¯Èº
-	  registry_init_update:registry_init_update,					registry½Úµã½¨Á¢¾µÏñ¿â
-	  dashboard_skydns_kubedns:dashboard_skydns_kubedns,			²¿Êğdashboard_skydns_kubedns
-	  One_button_loader:One_button_loader, 							Ö´ĞĞÒÔÉÏº¯Êı£¬ÊµÏÖÒ»¼üÊ½×°»ú£¨Ç°ÌáÊÇ£º¹Ø±ÕÁË·À»ğÇ½¡¢selinux¡¢¸üĞÂÁËyumÔ´£©
+	  localHOSTS:localHOSTS, 										å‘æœ¬åœ°hostsæ–‡ä»¶ä¸­è¿½åŠ è™šæ‹Ÿæœºçš„ä¸»æœºåä¸IPåœ°å€æ˜ å°„   
+	  setupIPhostname:setupIPhostname, 								è®¾ç½®è™šæ‹Ÿæœºçš„IPä¸ä¸»æœºåæ˜ å°„ï¼Œä»¥åŠä¸»æœºå
+	  restartAllVirtualMachines:restartAllVirtualMachines, 			é‡å¯æ‰€æœ‰è™šæ‹Ÿæœº
+	  runningState:runningState,									æŸ¥çœ‹è™šæ‹Ÿæœºçš„çŠ¶æ€
+	  common_init_MsaterSalve:common_init_MsaterSalve,				ä¸»èŠ‚ç‚¹å’Œä»èŠ‚ç‚¹ä¸­etcdã€kubernetesã€flannelå…±åŒçš„é…ç½®
+	  only_init_master:only_init_master,							ä¸»èŠ‚ç‚¹çš„å•ç‹¬éœ€è¦çš„é…ç½®
+	  only_init_salve:only_init_salve,								ä»èŠ‚ç‚¹çš„å•ç‹¬éœ€è¦çš„é…ç½®
+	  start_docker_cloud:start_docker_cloud,						å¼€å¯dockeré›†ç¾¤
+	  registry_init_update:registry_init_update,					registryèŠ‚ç‚¹å»ºç«‹é•œåƒåº“
+	  dashboard_skydns_kubedns:dashboard_skydns_kubedns,			éƒ¨ç½²dashboard_skydns_kubedns
+	  One_button_loader:One_button_loader, 							æ‰§è¡Œä»¥ä¸Šå‡½æ•°ï¼Œå®ç°ä¸€é”®å¼è£…æœºï¼ˆå‰ææ˜¯ï¼šå…³é—­äº†é˜²ç«å¢™ã€selinuxã€æ›´æ–°äº†yumæºï¼‰
 	  testcheshi1:testcheshi1,			
-	  ²âÊÔº¯Êı
+	  æµ‹è¯•å‡½æ•°
 	  
 	  
 	  
 	  
 	  
-²âÊÔÑéÖ¤	  
-http://172.16.2.7:5000/v2/_catalog ²é¿´¾µÏñÔËĞĞÇé¿ö
-172.16.2.144:8080/ui/ ²é¿´kubernetesÔËĞĞ×´¿ö
+æµ‹è¯•éªŒè¯	  
+http://172.16.2.7:5000/v2/_catalog æŸ¥çœ‹é•œåƒè¿è¡Œæƒ…å†µ
+172.16.2.144:8080/ui/ æŸ¥çœ‹kubernetesè¿è¡ŒçŠ¶å†µ
