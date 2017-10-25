@@ -1,53 +1,53 @@
-1,×¼±¸¹¤×÷
-    ÁªÍø£¬½«ËÄ¸ö×é¼ş´ÓdockerÍøÉÏÀ­È¡
+1,å‡†å¤‡å·¥ä½œ
+    è”ç½‘ï¼Œå°†å››ä¸ªç»„ä»¶ä»dockerç½‘ä¸Šæ‹‰å–
     docker pull docker.io/mysql		
-	docker pull docker.io/tomcat	TomcatÎª8.51
+	docker pull docker.io/tomcat	Tomcatä¸º8.51
 	docker pull docker.io/redis
 	docker pull docker.io/nginx
-2£¬ÏÂÔØÏàÓ¦µÄjar°ü
+2ï¼Œä¸‹è½½ç›¸åº”çš„jaråŒ…
     
 	tomcat-juli-8.5.21.jar
     https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-juli/8.5.21
-	jedis-2.9.0.jarÒÔ¼°commons-pool2-2.4.2.jar¶¼¿ÉÔÚÉÏÃæµÄÍøÖ·ÖĞËÑË÷Ãâ·ÑÏÂÔØ
+	jedis-2.9.0.jarä»¥åŠcommons-pool2-2.4.2.jaréƒ½å¯åœ¨ä¸Šé¢çš„ç½‘å€ä¸­æœç´¢å…è´¹ä¸‹è½½
 	
-	tomcat85-session-redis-1.0.jar  £ºÕâ¸öÔÚ°Ù¶ÈÍøÅÌÉÏ¿ÉÒÔÃâ·ÑÏÂÔØ£¬ÔÚcsdnÉÏĞèÒª»ı·ÖÏÂÔØ
+	tomcat85-session-redis-1.0.jar  ï¼šè¿™ä¸ªåœ¨ç™¾åº¦ç½‘ç›˜ä¸Šå¯ä»¥å…è´¹ä¸‹è½½ï¼Œåœ¨csdnä¸Šéœ€è¦ç§¯åˆ†ä¸‹è½½
 	
-3£¬×¢ÒâÔÚbuiltÊ±£¬Ãû³Æ²»ÄÜÒÔ´óĞ´×ÖÄ¸¿ªÍ·
+3ï¼Œæ³¨æ„åœ¨builtæ—¶ï¼Œåç§°ä¸èƒ½ä»¥å¤§å†™å­—æ¯å¼€å¤´
 
-4£¬MySQLÅäÖÃÎÄ¼ş
-    COPY setup.sh /mysql/setup.sh    ÉèÖÃMySQLµÄÆğ¶¯
-	COPY schema.sql /mysql/schema.sql  ÏîÄ¿µÄÊı¾İ¿âÔ´
-	COPY privileges.sql /mysql/privileges.sql  MySQLµÄÊÚÈ¨Ô¶³ÌÁ¬½Ó
-	COPY my.cnf /etc/mysql/my.cnf 	MySQLµÄÖĞÎÄÂÒÂëÎÊÌâ
+4ï¼ŒMySQLé…ç½®æ–‡ä»¶
+    COPY setup.sh /mysql/setup.sh    è®¾ç½®MySQLçš„èµ·åŠ¨
+	COPY schema.sql /mysql/schema.sql  é¡¹ç›®çš„æ•°æ®åº“æº
+	COPY privileges.sql /mysql/privileges.sql  MySQLçš„æˆæƒè¿œç¨‹è¿æ¥
+	COPY my.cnf /etc/mysql/my.cnf 	MySQLçš„ä¸­æ–‡ä¹±ç é—®é¢˜
 	
-5£¬redis 
-	Ö±½ÓÆô¶¯¼ÇÂ¼¶Ë¿ÚºÅ¼´¿É
-	ÕâÀïÃ»ÓĞÔÚÏîÄ¿ÖĞ½øĞĞÊı¾İµÄ¹²Ïí£¬Ö»ÊÇ¼òµ¥µÄTomcatÖĞµÄsession¹²Ïí
+5ï¼Œredis 
+	ç›´æ¥å¯åŠ¨è®°å½•ç«¯å£å·å³å¯
+	è¿™é‡Œæ²¡æœ‰åœ¨é¡¹ç›®ä¸­è¿›è¡Œæ•°æ®çš„å…±äº«ï¼Œåªæ˜¯ç®€å•çš„Tomcatä¸­çš„sessionå…±äº«
 	
-6£¬TomcatÅäÖÃÎÄ¼ş
-	×¢Òâ£ºTomcat7ÒÔ¼°Tomcat8ÔÙ½áºÏNginx£¬Ê¹ÓÃµÄjar°üÊÇ²»Ò»ÑùµÄ£¬²¢ÇÒÆäÖĞµÄcontext.xmlÎÄ¼şÅäÖÃÒ²²»Ò»Ñù
-	ÕâÀïÄ¬ÈÏÆô¶¯Á½¸öÅäÖÃTomcat8
+6ï¼ŒTomcaté…ç½®æ–‡ä»¶
+	æ³¨æ„ï¼šTomcat7ä»¥åŠTomcat8å†ç»“åˆNginxï¼Œä½¿ç”¨çš„jaråŒ…æ˜¯ä¸ä¸€æ ·çš„ï¼Œå¹¶ä¸”å…¶ä¸­çš„context.xmlæ–‡ä»¶é…ç½®ä¹Ÿä¸ä¸€æ ·
+	è¿™é‡Œé»˜è®¤å¯åŠ¨ä¸¤ä¸ªé…ç½®Tomcat8
 	COPY cyclingbgtv1.war  /usr/local/tomcat/webapps/
-	COPY context.xml /usr/local/tomcat/conf/      ÕâÀïÅäÖÃÓÃ»§µÇÂ¼£¬ÊµÏÖsession¹²Ïí£¬ÅäÖÃredis·şÎñÆ÷µÄIPµØÖ·ÒÔ¼°¶Ë¿ÚºÅ 
+	COPY context.xml /usr/local/tomcat/conf/      è¿™é‡Œé…ç½®ç”¨æˆ·ç™»å½•ï¼Œå®ç°sessionå…±äº«ï¼Œé…ç½®redisæœåŠ¡å™¨çš„IPåœ°å€ä»¥åŠç«¯å£å· 
 	COPY commons-pool2-2.4.2.jar /usr/local/tomcat/lib/
 	COPY jedis-2.9.0.jar /usr/local/tomcat/lib/
 	COPY tomcat-juli-8.5.21.jar /usr/local/tomcat/lib/
 	COPY tomcat85-session-redis-1.0.jar  /usr/local/tomcat/lib/
 	
-7£¬Nginx 
-	COPY  nginx.conf  /etc/nginx/  ÕâÀïÃæ×÷ÎªÇëÇóµÄ·ÖÅä
-	Ö»ÊÇ½øĞĞ¼òµ¥µÄÅäÖÃ
-	ÆäËûµÄÉĞÎ´ÅäÖÃ£¬ÒÔºóÔÙÌí¼Ó£¬ÀıÈç£ºÏñÒ»Ğ©¾²Ì¬µÄÍ¼Æ¬¡¢css¡¢js¡¢Êı¾İ·ÃÎÊµÈµÈ¶ÔÓ¦¸÷×ÔµÄTomcat»¹Ã»½øĞĞÅäÖÃ
+7ï¼ŒNginx 
+	COPY  nginx.conf  /etc/nginx/  è¿™é‡Œé¢ä½œä¸ºè¯·æ±‚çš„åˆ†é…
+	åªæ˜¯è¿›è¡Œç®€å•çš„é…ç½®
+	å…¶ä»–çš„å°šæœªé…ç½®ï¼Œä»¥åå†æ·»åŠ ï¼Œä¾‹å¦‚ï¼šåƒä¸€äº›é™æ€çš„å›¾ç‰‡ã€cssã€jsã€æ•°æ®è®¿é—®ç­‰ç­‰å¯¹åº”å„è‡ªçš„Tomcatè¿˜æ²¡è¿›è¡Œé…ç½®
 	
 	
-	Á½¸öserverÎªÏîÄ¿²¿ÊğµÄIP¼°¶Ë¿ÚÉèÖÃ
+	ä¸¤ä¸ªserverä¸ºé¡¹ç›®éƒ¨ç½²çš„IPåŠç«¯å£è®¾ç½®
 	#gzip  on;
 	upstream cyclingbgtv1 {
         server 172.16.2.1:8180;
         server 172.16.2.1:8280;
 	}
 	
-	proxy_pass  http://cyclingbgtv1;  ºÍ upstream cyclingbgtv1ÒªÒ»Ò»¶ÔÓ¦
+	proxy_pass  http://cyclingbgtv1;  å’Œ upstream cyclingbgtv1è¦ä¸€ä¸€å¯¹åº”
 	location / {
             root   html;
             index  index.html index.htm;
@@ -62,9 +62,9 @@
 		}
 		
 	
-8£¬Ææ¹ÖµÄÎÊÌâ£º
-	½Å±¾Ò»¸öº¯ÊıÒ»¸öº¯ÊıµÄÖ´ĞĞÍêÈ«Ã»ÓĞÎÊÌâ
-	Í³Ò»ÕûÌåÔËĞĞ£¬ĞèÒªÖØĞÂÆô¶¯Tomcat£¬²»ÖªÎªÉ¶£¬Ò²ÊÇ×íÁË£¬ÕÛÌÚÁËÒ»ÍíÉÏ£¬»¹ÊÇÃ»ÓĞ½â¾ö
+8ï¼Œå¥‡æ€ªçš„é—®é¢˜ï¼š
+	è„šæœ¬ä¸€ä¸ªå‡½æ•°ä¸€ä¸ªå‡½æ•°çš„æ‰§è¡Œå®Œå…¨æ²¡æœ‰é—®é¢˜
+	ç»Ÿä¸€æ•´ä½“è¿è¡Œï¼Œéœ€è¦é‡æ–°å¯åŠ¨Tomcatï¼Œä¸çŸ¥ä¸ºå•¥ï¼Œä¹Ÿæ˜¯é†‰äº†ï¼ŒæŠ˜è…¾äº†ä¸€æ™šä¸Šï¼Œè¿˜æ˜¯æ²¡æœ‰è§£å†³
 	docker stop ntomcatrwm1
 	docker rm ntomcatrwm1
 	docker run -d -p 8180:8080 --name ntomcatrwm1 ntomcatrwm:1
