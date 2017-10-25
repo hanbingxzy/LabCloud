@@ -1,0 +1,73 @@
+1,准备工作
+    联网，将四个组件从docker网上拉取
+    docker pull docker.io/mysql		
+	docker pull docker.io/tomcat	Tomcat为8.51
+	docker pull docker.io/redis
+	docker pull docker.io/nginx
+2，下载相应的jar包
+    
+	tomcat-juli-8.5.21.jar
+    https://mvnrepository.com/artifact/org.apache.tomcat/tomcat-juli/8.5.21
+	jedis-2.9.0.jar以及commons-pool2-2.4.2.jar都可在上面的网址中搜索免费下载
+	
+	tomcat85-session-redis-1.0.jar  ：这个在百度网盘上可以免费下载，在csdn上需要积分下载
+	
+3，注意在built时，名称不能以大写字母开头
+
+4，MySQL配置文件
+    COPY setup.sh /mysql/setup.sh    设置MySQL的起动
+	COPY schema.sql /mysql/schema.sql  项目的数据库源
+	COPY privileges.sql /mysql/privileges.sql  MySQL的授权远程连接
+	COPY my.cnf /etc/mysql/my.cnf 	MySQL的中文乱码问题
+	
+5，redis 
+	直接启动记录端口号即可
+	这里没有在项目中进行数据的共享，只是简单的Tomcat中的session共享
+	
+6，Tomcat配置文件
+	注意：Tomcat7以及Tomcat8再结合Nginx，使用的jar包是不一样的，并且其中的context.xml文件配置也不一样
+	这里默认启动两个配置Tomcat8
+	COPY cyclingbgtv1.war  /usr/local/tomcat/webapps/
+	COPY context.xml /usr/local/tomcat/conf/      这里配置用户登录，实现session共享，配置redis服务器的IP地址以及端口号 
+	COPY commons-pool2-2.4.2.jar /usr/local/tomcat/lib/
+	COPY jedis-2.9.0.jar /usr/local/tomcat/lib/
+	COPY tomcat-juli-8.5.21.jar /usr/local/tomcat/lib/
+	COPY tomcat85-session-redis-1.0.jar  /usr/local/tomcat/lib/
+	
+7，Nginx 
+	COPY  nginx.conf  /etc/nginx/  这里面作为请求的分配
+	只是进行简单的配置
+	其他的尚未配置，以后再添加，例如：像一些静态的图片、css、js、数据访问等等对应各自的Tomcat还没进行配置
+	
+	
+	两个server为项目部署的IP及端口设置
+	#gzip  on;
+	upstream cyclingbgtv1 {
+        server 172.16.2.1:8180;
+        server 172.16.2.1:8280;
+	}
+	
+	proxy_pass  http://cyclingbgtv1;  和 upstream cyclingbgtv1要一一对应
+	location / {
+            root   html;
+            index  index.html index.htm;
+			add_header Cache-Control 'no-store';
+            client_max_body_size 100m;
+            proxy_set_header Host $http_host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            # proxy_cache Z;
+            proxy_cache_valid 200 1m;
+            proxy_pass  http://cyclingbgtv1;
+		}
+		
+	
+8，奇怪的问题：
+	脚本一个函数一个函数的执行完全没有问题
+	统一整体运行，需要重新启动Tomcat，不知为啥，也是醉了，折腾了一晚上，还是没有解决
+	docker stop ntomcatrwm1
+	docker rm ntomcatrwm1
+	docker run -d -p 8180:8080 --name ntomcatrwm1 ntomcatrwm:1
+	docker stop ntomcatrwm2
+	docker rm ntomcatrwm2
+	docker run -d -p 8280:8080 --name ntomcatrwm2 ntomcatrwm:1
