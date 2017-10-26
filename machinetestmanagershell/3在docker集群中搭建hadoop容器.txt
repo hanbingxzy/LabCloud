@@ -1,0 +1,20 @@
+仅仅是安装hadoop
+所以需要三个文件：hadoop.sh、setupHadoopMaster.sh、setupHadoopSalve.sh
+其中setupHadoopMaster.sh、setupHadoopSalve.sh这两个文件需要和jdk压缩包以及hadoop压缩包放置到节点的同一个目录下
+  //hadoop 相关定义
+  var hadoopdefine = [{
+    "hadoopsum":"3",  									 hadoop镜像的数目
+	"hadoopPwd":"hadoop",								 镜像中的系统密码
+	"serverjdkname":"jdk-7u79-linux-x64.tar.gz",		 jdk压缩包
+	"serverhadoopname":"hadoop-2.6.0.tar.gz",			 hadoop压缩包
+	"HadoopJdkDockerfile":"/root/software/",			 hadoop.sh、setupHadoopMaster.sh、setupHadoopSalve.sh的放置目录，以及Dockerfile的放置目录
+	"hadoopInstallIp":"172.16.2.1" 						 hadoop安装节点的IP地址
+  }];
+  
+  1，先在"hadoopInstallIp":"172.16.2.1"新建一个"HadoopJdkDockerfile":"/root/software/"目录
+  2，使用SecureCRT或者winscp或者putty将两个文件：setupHadoopMaster.sh、setupHadoopSalve.sh两个包jdk-7u79-linux-x64.tar.gz、hadoop-2.6.0.tar.gz拖至/root/software目录下
+  3，在bat打开的窗口中执行：dockercloud cloud.install_hadoop() ，即可
+  
+  为解决的问题
+  1，hadoop的native本地库配置问题
+  2，所有文件的源下载问题

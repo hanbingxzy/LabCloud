@@ -1,0 +1,64 @@
+步骤（centos7）：
+1，关闭防火墙
+firewall-cmd --state
+systemctl stop firewalld.service
+systemctl disable firewalld.service
+2，关闭SELINUX
+sed -i 's/SELINUX=enforcing/SELINUX=disabled/' /etc/selinux/config
+3,设置开机等待时间
+sed -i 's/set timeout=5/set timeout=1/g' /boot/grub2/grub.cfg
+4,更新yum源或者配置国内镜像163仓库
+curl "http://202.193.80.124/" -H "Pragma: no-cache" -H "Origin: http://202.193.80.124" -H "Accept-Encoding: gzip, deflate" -H "Accept-Language: zh-CN,zh;q=0.8" -H "Upgrade-Insecure-Requests: 1" -H "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/57.0.2987.98 Safari/537.36" -H "Content-Type: application/x-www-form-urlencoded" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" -H "Cache-Control: max-age=0" -H "Referer: http://202.193.80.124/" -H "Connection: keep-alive" --data "DDDDD=g102016452&upass=03141b2b5032ba8c682103364b93ce2a123456781&R1=0&R2=1&para=00&0MKKey=123456" --compressed | grep "Please don't forget to log out after you have finished."
+yum clean all
+yum --enablerepo=extras clean metadata
+yum -y update
+yum install -y deltarpm
+yum provides '*/applydeltarpm'
+
+配置新的国内镜像163yum源
+下载repo文件 
+cd /etc/yum.repos.d
+mv CentOS-Base.repo CentOS-Base.repo.bk  
+yum install -y wget
+wget -O CentOS-Base.repo http://mirrors.163.com/.help/CentOS6-Base-163.repo 
+执行yum源更新
+清除以前使用yum的缓存
+yum clean all      
+建立一个缓存，以后方便在缓存中搜索
+yum makecache
+yum --enablerepo=extras clean metadata
+yum -y update
+yum install -y deltarpm
+yum provides '*/applydeltarpm'
+
+
+
+
+#下面是笔记，仅供参考
+1，centos7与centos6不同  
+    将网络设置成桥接并开启，会看到网卡自动分配的IP地址，不用再手动设置配置文件 /etc/sysconfig/network-scripts/ifcfg-eth0， 文件中将ONBOOT=yes设置为  yes
+    关闭防火墙以及SELINUX关闭
+    CentOS 7.0默认使用的是firewall作为防火墙，这里改为iptables防火墙步骤。
+     firewall-cmd --state #查看默认防火墙状态（关闭后显示notrunning，开启后显示running）
+     systemctl stop firewalld.service #停止firewall
+     systemctl disable firewalld.service #禁止firewall开机启动
+    Centos7,没有iptables.service  但是有iptables这个命令
+    SELINUX关闭与其相同：修改/etc/selinux/config 文件   将SELINUX=enforcing改为SELINUX=disabled 重启
+2，centos7设置开机等待时间
+vi /boot/grub2/grub.cfg
+set timeout=5（建议修改成1，不要修改成0，修改完成后，重启即可看到效果） 注意是重启不是关机开机
+
+//3 修改主机名与对应的主机名映射
+///   centos7与6不同，修改主机名 etc/hostname 中直接写主机名   etc/hosts 中配置主机名映射
+
+
+3，联网跟新yum源
+connect
+yum clean all
+yum --enablerepo=extras clean metadata
+yum -y update
+
+4，安装deltarpm并执行yum provides '*/applydeltarpm'，也是一个软件，不知道是干啥的，只知道是解决
+Error: Delta RPMs disabled because /usr/bin/applydeltarpm not installed.
+yum install -y deltarpm
+yum provides '*/applydeltarpm'
