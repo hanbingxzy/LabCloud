@@ -36,12 +36,12 @@ function setHOSTS(){
 ::1         localhost localhost.localdomain localhost6 localhost6.localdomain6
 $1
 EOF
-  echo $1
-  cat /etc/hosts
+  #echo $1
+  #cat /etc/hosts
   #把写成了一行的dns转换为多行
   sed -i s/,/\\n/g /etc/hosts
   sed -i 's/-/ /g' /etc/hosts
-  cat /etc/hosts
+  #cat /etc/hosts
 }
 function shutdown(){
   nic=`ip a | grep  -o "^.: en[^:]*" | awk '{print $2}'`
@@ -63,8 +63,13 @@ function installDenpendencies(){
 
 
 
-
+#为什么新登陆的root会以/home/hds为当前目录和根目录？
+#原来是因为此函数被执行了两次，一个是以root，另一个是以hds,且重定向的日志文件1竟然产生了两个，可为什么会这样？
+#原来是cal.js setup函数的问题，指令数组在被root执行完后应被清空，然后新的指令数组再被hds执行。
 function copyClusterFolder(){
+  who
+  pwd
+  cd
   mkdir ~/center
   rm -f -R /home/hds/center
   umount ~/center
@@ -93,7 +98,7 @@ valid users = hds
 #admin users = hds
 create mask = 0765
 EOF
-  service smb restart
+  service smb restart  
 }
 function mountClusterFolder(){
   mkdir /home/hds/center
@@ -236,6 +241,7 @@ EOF
  <property><name>dfs.webhdfs.enabled</name><value>true</value></property>
 </configuration>
 EOF
+cat conf/hdfs-site.xml
   #让每个yarn计算结点管理2G(1G留给系统)内存,2*6=12G虚存,两个核,每次申请最多只允许申请2g内存
   cat > conf/yarn-site.xml << EOF
 <configuration>
@@ -275,11 +281,16 @@ function main(){
 #依赖特定的镜像文件夹与center文件夹
 #originIP originPWD Hostname HOSTS 
 function setupRootMaster(){
-  #copyClusterFolder $1 $2
+  echo copyClusterFolder
+  copyClusterFolder $1 $2
+  echo copyClusterFolder
   shareClusterFolder
   console
   setHostname $3
   setHOSTS $4
+  
+  ls -l /home/hds/center
+  echo ------------------------------------------------------
 }
 #masterIP Hostname HOSTS
 function setupRootSlave(){
@@ -292,7 +303,11 @@ function setupRootSlave(){
 #masterNode HOSTS(for slaves file)
 function setupMaster(){
   #createHadoopCommonInShareFolder $1 $2
+  ls -l /home/hds/center
+  echo ------------------------------------------------------
   installClusterApp2 $1 $2
+  ls -l /home/hds/center
+  echo ------------------------------------------------------
 }
 function setupSlave(){
   installClusterApp2 $1 $2
@@ -323,6 +338,8 @@ function testHadoopCluster(){
   ~/hadoop-2.6.4/bin/hadoop fs -ls /logs
   ~/hadoop-2.6.4/bin/hadoop jar ~/hadoop-2.6.4/share/hadoop/mapreduce/hadoop-mapreduce-examples-2.6.4.jar wordcount /logs /output
   ~/hadoop-2.6.4/bin/hadoop fs -cat /output/part-r-00000
+  ~/hadoop-2.6.4/bin/hadoop fs -rm -f -r /logs
+  ~/hadoop-2.6.4/bin/hadoop fs -rm -f -r /output
 }
 
 
@@ -1097,7 +1114,8 @@ EOF
   #docker build -f Dockerfile_FPM_APP -t php:fpmapp . && docker push php:fpmapp && docker rmi php:fpmapp  
   APP='nginx node tomcat php mysql'
   for X in $APP ; do 
-    cd ~/$X && docker build -t $X:v1 . && docker push $X:v1 && docker rmi $X:v1
+    cd ~/$X
+    #docker build -t $X:v1 . && docker push $X:v1 && docker rmi $X:v1
   done
   disconnect
   
@@ -1151,4 +1169,4 @@ EOF
 #entry
 main
 #entry
-#sleep 3
+#sleep 5

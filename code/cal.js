@@ -7,11 +7,18 @@ function caculate(formulation){
 
 var cloud = (function (){
   /*如何收集结点信息是个问题.*/
+  /*
   var machines = [
-    {"IP":"172.16.2.24", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"},
-    {"IP":"172.16.2.50", "path":"D:\\wangqi\\src\\vm\\Kubernetes1\\Kubernetes.vmx"}
+    {"IP":"172.16.2.173", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"},
+    {"IP":"172.16.2.50", "path":"D:\\wangqi\\src\\vm\\Kubernetes1\\Kubernetes.vmx"},
+    {"IP":"172.16.2.222"}
   ];
-  var originIP = "172.16.2.215";
+  */
+  var machines = [
+    {"IP":"172.16.2.246", "isMaster":true, "path":"D:\\wangqi\\src\\vm\\node1\\node1.vmx"},
+    {"IP":"172.16.2.88", "path":"D:\\wangqi\\src\\vm\\node2\\node2.vmx"}    
+  ];
+  var originIP = "172.16.2.70";
   var originPWD = "123456";
   var pwd = "labcloud"
   var vmware = "D:\\wangqi\\cache\\yang\\vm10\\vmware.exe";
@@ -116,9 +123,10 @@ var cloud = (function (){
   function setup(machines, i){
     var machine = machines[i];
     var commands = [];    
-    commands.push((machine.isMaster?"setupRootMaster " +originIP+ " " +originPWD:"setupRootSlave " +machines[masterIndex(machines)].IP)+ " " +i+ " " +dns(machines));    
-    runCommands(true, machine, commands);    
-    commands.push((machine.isMaster?"setupMaster ":"setupSlave ") +masterIndex(machines)+ " " +dns(machines));    
+    commands.push((machine.isMaster?"setupRootMaster " +originIP+ " " +originPWD:"setupRootSlave " +machines[masterIndex(machines)].IP)+ " " +i+ " " +dns(machines) + "  > 1 2>&1");    
+    runCommands(true, machine, commands);
+    commands = [];  
+    commands.push((machine.isMaster?"setupMaster ":"setupSlave ") +masterIndex(machines)+ " " +dns(machines)  + " > 2 2>&1");    
     runCommands(false, machine, commands);
   }
   function initHadoop(){
@@ -145,7 +153,7 @@ var cloud = (function (){
     var commands = [];
     switch(cmd){
     case 1:
-      commands.push("startHadoopCluster");
+      commands.push("startHadoopCluster > 3 2>&1");
       break;
     case 2:
       commands.push("stopHadoopCluster");
@@ -155,7 +163,7 @@ var cloud = (function (){
       commands.push("startHadoopCluster");
       break;
     case 4:
-      commands.push("testHadoopCluster");
+      commands.push("testHadoopCluster > 5 2>&1");
       break;
     default:break;
     }
