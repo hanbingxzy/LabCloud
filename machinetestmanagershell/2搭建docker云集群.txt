@@ -1,0 +1,54 @@
+1，复制dockercloud.js文件，修改里面的参数
+   这两个集合默认第一个分别为：master节点的：主机IP以及主机名
+   machines：为主机各个节点的IP集合，这个得手动收集
+   物理机填写方式{"IP":"172.16.2.133", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"}
+   虚拟机填写方式{"IP":"172.16.2.1", "isMaster":true, "path":"E:\\VirtualMachines\\docker1\\docker1.vmx"}
+   isMaster：是否为主节点
+   isPhysical：是否为物理机
+   MAC：物理机的Mac地址
+   path：为服务机中的虚拟机位置
+   注意：centos7的Mac地址换成ether 字段值了
+   plink使用：首次使用时有个交互提示：是否要保存秘钥key，所以在程序脚本中会有一个交互，需要输入Y/N，命令参数中有一个-batch关闭交互提示，不知是否好用
+   
+   注意：在使用Mac重启远程主机时，需要再关机时使网卡保持唤醒，详细了解请看halt函数
+   
+   hostnames：为主机各个节点所要设置的主机名
+   machineName：
+    "master_hostname":"docker1",        docker主节点的主机名
+	"KUBE_master_hostname":"docker1",   kubernetes主节点的主机名
+	"registryHostname":"docker2",       registryHostname镜像节点所在的节点的主机名
+	"registryHostIP":"172.16.2.95",     registryHostname镜像节点所在的节点的IP
+	"apiserverHostname":"docker1",      apiserverHostname是kubernetes的apiserver服务节点的主机名名称
+    "etcdHostname":"docker1",           etcdHostname是etc组件的主机名称
+	"apiserver_host":"172.16.2.1",    apiserver_host是kubernetes的apiserver服务节点的IP地址
+	"kube_master_url":"172.16.2.1"    kube_master_url是kubernetes主节点的IP地址
+   
+  VMware_dir //定义虚拟机的安装目录  
+  suzu_host_ip //宿主主机IP地址
+  suzu_host_user //宿主主机登录用户名
+  suzu_host_pwd //宿主主机登录密码
+   
+   
+   pwd为系统的虚拟机的源开机密码，这里推荐使用同一个开机密码
+   
+	  localHOSTS:localHOSTS, 										向本地hosts文件中追加虚拟机的主机名与IP地址映射   
+	  setupIPhostname:setupIPhostname, 								设置虚拟机的IP与主机名映射，以及主机名
+	  restartAllVirtualMachines:restartAllVirtualMachines, 			重启所有虚拟机
+	  runningState:runningState,									查看虚拟机的状态
+	  common_init_MsaterSalve:common_init_MsaterSalve,				主节点和从节点中etcd、kubernetes、flannel共同的配置
+	  only_init_master:only_init_master,							主节点的单独需要的配置
+	  only_init_salve:only_init_salve,								从节点的单独需要的配置
+	  start_docker_cloud:start_docker_cloud,						开启docker集群
+	  registry_init_update:registry_init_update,					registry节点建立镜像库
+	  dashboard_skydns_kubedns:dashboard_skydns_kubedns,			部署dashboard_skydns_kubedns
+	  One_button_loader:One_button_loader, 							执行以上函数，实现一键式装机（前提是：关闭了防火墙、selinux、更新了yum源）
+	  testcheshi1:testcheshi1,			
+	  测试函数
+	  
+	  
+	  
+	  
+	  
+测试验证	  
+http://172.16.2.7:5000/v2/_catalog 查看镜像运行情况
+172.16.2.144:8080/ui/ 查看kubernetes运行状况
