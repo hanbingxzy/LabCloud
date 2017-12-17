@@ -49,23 +49,43 @@ function shutdown(){
   ethtool $nic
   #此处必延时？不然无法再wol？测试发现加不加都不行，原来是cal.js调用的还是旧关机方法，不是此新的。
   #sleep 1
-  nohup poweroff >null 2>&1 &
+  nohup poweroff >/dev/null 2>&1 &
 }
+function closeFireWall(){
+  setenforce 0
+  /usr/sbin/sestatus -v
+  getenforce
 
+  iptables -F 
 
+  for SERVICES in iptables-services firewalld; do
+    systemctl stop $SERVICES
+    systemctl disable $SERVICES
+  done  
+}
 
 function installDenpendencies(){
-  disconnect
   connect
   ping -c 3 www.baidu.com
+  yum -y install samba samba-client expect
   disconnect
 }
 
-
+function createUserHadoop(){
+  userdel hds
+  groupdel hadoop
+  groupadd hadoop
+  useradd -s /bin/bash -d /home/hds -m hds -g hadoop
+  
+  echo hds:hds | chpasswd
+  chown -R hds /home/hds
+  chgrp -R hadoop /home/hds
+}
 
 #为什么新登陆的root会以/home/hds为当前目录和根目录？
 #原来是因为此函数被执行了两次，一个是以root，另一个是以hds,且重定向的日志文件1竟然产生了两个，可为什么会这样？
 #原来是cal.js setup函数的问题，指令数组在被root执行完后应被清空，然后新的指令数组再被hds执行。
+#centos7中的cifs（samba-client）不是passwd而是password
 function copyClusterFolder(){
   who
   pwd
@@ -73,7 +93,7 @@ function copyClusterFolder(){
   mkdir ~/center
   rm -f -R /home/hds/center
   umount ~/center
-  mount -t cifs -o username=administrator,passwd=$2,rw,dir_mode=0777,file_mode=0777 //$1/center ~/center
+  mount -t cifs -o username=administrator,password=$2,rw,dir_mode=0777,file_mode=0777 //$1/center ~/center
   cp -R ~/center /home/hds/
   umount ~/center
   chown -R hds /home/hds/center
@@ -98,12 +118,17 @@ valid users = hds
 #admin users = hds
 create mask = 0765
 EOF
-  service smb restart  
+  systemctl restart smb
+  systemctl enable smb
+  systemctl status smb  
+  #smbpasswd -a hds
+  expect -c "set timeout 100;set password \"hds\";spawn smbpasswd -a hds;expect \"New SMB password:\";send \"\$password\n\";expect \"Retype new SMB password:\";send \"\$password\n\";interact;"
+  smbclient -L node0 -U hds%hds
 }
 function mountClusterFolder(){
   mkdir /home/hds/center
   umount /home/hds/center
-  mount -t cifs -o username=hds,passwd=hds,rw,dir_mode=0777,file_mode=0777 //$1/center /home/hds/center
+  mount -t cifs -o username=hds,password=hds,rw,dir_mode=0777,file_mode=0777 //$1/center /home/hds/center
   ls -l /home/hds/center
 }
 
@@ -188,6 +213,7 @@ export PATH=\$PATH:\$JAVA_HOME/bin:\$HADOOP_HOME/bin
 export HADOOP_CONF_DIR=~/center/conf
 export HADOOP_LOG_DIR=~/logs
 export HADOOP_COMMON_LIB_NATIVE_DIR=\$HADOOP_HOME/lib/native
+export HBASE_MANAGES_ZK=true
 EOF
 }
 
@@ -205,9 +231,30 @@ function installClusterApp2(){
   
   rm -f -R jdk1.8.0_73
   rm -f -R hadoop-2.6.4
+  rm -f -R hbase-1.1.5
   tar zxvf center/jdk-8u73-linux-x64.tar.gz
   tar zxvf center/hadoop-2.6.4.tar.gz
+  tar zxvf center/hbase-1.1.5-bin.tar.gz
   
+  rm -fR ~/.ssh
+  mkdir ~/.ssh
+  cp center/rsa/* .ssh/
+  chmod -R 700 .ssh/
+  chmod -R 600 .ssh/authorized_keys
+  
+  rm -f -R conf
+  mkdir conf
+  cp -R hadoop-2.6.4/etc/hadoop/* conf/  
+    
+  ls ~/hbase-1.1.5/lib | grep hadoop
+  rm -rf ls ~/hbase-1.1.5/lib/hadoop*.jar
+  find ~/hadoop-2.6.4/share/hadoop -name "hadoop*jar" | xargs -i cp {} ~/hbase-1.1.5/lib/
+  rm -rf ls ~/hbase-1.1.5/lib/hadoop*sources.jar
+  #删掉aws否则会自动加载而发现依赖不足，进而无法启动
+  rm -rf ls ~/hbase-1.1.5/lib/hadoop-aws-2.6.4.jar
+
+}
+function installClusterAppConfig(){
   cat > .bashrc << EOF
 # Source global definitions
 if [ -f /etc/bashrc ]; then
@@ -221,10 +268,6 @@ export PATH=\$PATH:\$JAVA_HOME/bin:\$HADOOP_HOME/bin
 export HADOOP_CONF_DIR=~/conf
 export HADOOP_LOG_DIR=~/logs
 EOF
-
-  rm -f -R conf
-  mkdir conf
-  cp -R hadoop-2.6.4/etc/hadoop/* conf/
 
   cat > conf/core-site.xml << EOF
 <configuration>
@@ -241,7 +284,6 @@ EOF
  <property><name>dfs.webhdfs.enabled</name><value>true</value></property>
 </configuration>
 EOF
-cat conf/hdfs-site.xml
   #让每个yarn计算结点管理2G(1G留给系统)内存,2*6=12G虚存,两个核,每次申请最多只允许申请2g内存
   cat > conf/yarn-site.xml << EOF
 <configuration>
@@ -253,16 +295,16 @@ cat conf/hdfs-site.xml
  <property><name>yarn.nodemanager.aux-services</name><value>mapreduce_shuffle</value></property>
  <property><name>yarn.nodemanager.aux-services.mapreduce.shuffle.class</name><value>org.apache.hadoop.mapred.ShuffleHandler</value></property>
  
- <property><name>yarn.nodemanager.resource.memory-mb</name><value>1024</value></property>
+ <property><name>yarn.nodemanager.resource.memory-mb</name><value>2048</value></property>
  <property><name>yarn.nodemanager.vmem-pmem-ratio</name><value>6</value></property>
  <property><name>yarn.nodemanager.pmem-check-enabled</name><value>true</value></property>
  <property><name>yarn.nodemanager.vmem-check-enabled</name><value>true</value></property>
  <property><name>yarn.scheduler.minimum-allocation-mb</name><value>16</value></property>
- <property><name>yarn.scheduler.maximum-allocation-mb</name><value>1024</value></property>
+ <property><name>yarn.scheduler.maximum-allocation-mb</name><value>2048</value></property>
 
  <property><name>yarn.nodemanager.resource.cpu-vcores</name><value>1</value></property>
  <property><name>yarn.scheduler.minimum-allocation-vcores</name><value>1</value></property>
- <property><name>yarn.scheduler.maximum-allocation-vcores</name><value>2</value></property>
+ <property><name>yarn.scheduler.maximum-allocation-vcores</name><value>3</value></property>
 </configuration>
 EOF
   cat > conf/slaves << EOF
@@ -270,6 +312,17 @@ $2
 EOF
   sed -i s/,/\\n/g conf/slaves
   sed -i 's/^.*-//g' conf/slaves
+  
+  cp conf/slaves ~/hbase-1.1.5/conf/regionservers
+  cat > ~/hbase-1.1.5/conf/hbase-site.xml << EOF
+<configuration>
+ <property><name>hbase.rootdir</name><value>hdfs://node$1:9000/hbase</value></property>
+ <property><name>hbase.cluster.distributed</name><value>true</value></property>
+ <property><name>hbase.master</name><value>node$1:60000</value></property>
+ <property><name>hbase.zookeeper.quorum</name><value>`echo $2 | sed 's/[0-9\.]*-//g'`</value></property>
+</configuration>
+EOF
+  
 }
 
 #main
@@ -277,44 +330,48 @@ function main(){
   echo "Please select another main to run."
 }
 
-
+function imageBase(){
+  closeFireWall
+  installDenpendencies
+  createUserHadoop  
+  console
+  setHostname $1
+  setHOSTS $2
+}
 #依赖特定的镜像文件夹与center文件夹
 #originIP originPWD Hostname HOSTS 
 function setupRootMaster(){
-  echo copyClusterFolder
+  closeFireWall
   copyClusterFolder $1 $2
-  echo copyClusterFolder
   shareClusterFolder
-  console
-  setHostname $3
-  setHOSTS $4
-  
-  ls -l /home/hds/center
-  echo ------------------------------------------------------
 }
 #masterIP Hostname HOSTS
 function setupRootSlave(){
+  closeFireWall
   mountClusterFolder $1
-  setHostname $2
-  setHOSTS $3
 }
-
-
 #masterNode HOSTS(for slaves file)
 function setupMaster(){
   #createHadoopCommonInShareFolder $1 $2
-  ls -l /home/hds/center
-  echo ------------------------------------------------------
-  installClusterApp2 $1 $2
-  ls -l /home/hds/center
-  echo ------------------------------------------------------
+  installClusterApp2
+  installClusterAppConfig $1 $2
 }
 function setupSlave(){
-  installClusterApp2 $1 $2
+  installClusterApp2
+  installClusterAppConfig $1 $2
+}
+function setupNode(){
+  installClusterApp2
+  installClusterAppConfig $1 $2
 }
 
 
 function initHadoopCluster(){
+  echo $1
+  for X in `echo $1 | sed 's/,/\n/g' | sed 's/.*-//'` ; do
+    echo $X
+    expect -c "set timeout 100;set password \"yes\";spawn ssh $X echo yes;expect \"Are you sure you want to continue connecting (yes/no)\";send \"\$password\n\";interact;"
+  done
   ~/hadoop-2.6.4/bin/hdfs namenode -format  
 }
 
@@ -323,9 +380,11 @@ function startHadoopCluster(){
   ~/hadoop-2.6.4/sbin/start-dfs.sh
   ~/hadoop-2.6.4/sbin/start-yarn.sh
   ~/hadoop-2.6.4/bin/hdfs dfsadmin -safemode leave
+  ~/hbase-1.1.5/bin/start-hbase.sh
   jps
 }
 function stopHadoopCluster(){
+  ~/hbase-1.1.5/bin/stop-hbase.sh
   ~/hadoop-2.6.4/sbin/stop-yarn.sh
   ~/hadoop-2.6.4/sbin/stop-dfs.sh
   jps
@@ -398,11 +457,6 @@ function setupRootK8sSlave(){
 }
 
 
-function closeFireWall(){
-  setenforce 0
-  systemctl disable iptables-services firewalld
-  systemctl stop iptables-services firewalld
-}
 function startMasterSoftware(){
   for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld; do
       systemctl restart $SERVICES
@@ -1164,6 +1218,188 @@ spec:
     - containerPort: 80
 EOF
 }
+
+function startPXEServer(){
+  #yum -y install vsftpd ImageMagick
+  #convert -colors 14 /var/tftp/splash.jpg /var/tftp/splash.xpm
+  
+  ifconfig ens32:2 192.168.13.1 netmask 255.255.255.0
+
+#  SERVER=`ifconfig | grep -o "inet 172.16.2.[0-9]*" | awk '{print $2}'`
+  SERVER=`ifconfig | grep -o "inet 192.168.13.[0-9]*" | awk '{print $2}'`
+  
+  cat > /etc/dnsmasq.conf << EOF
+interface=ens32
+#bind-interfaces
+domain=centos7.lan
+# DHCP range-leases
+#dhcp-range= ens32,172.16.2.3,172.16.2.30,255.255.255.0,1h
+dhcp-range= ens32,192.168.13.3,192.168.13.30,255.255.255.0,1h
+# PXE
+dhcp-match=set:bios,60,PXEClient
+dhcp-boot=pxelinux.0,pxeserver,$SERVER
+# Gateway
+dhcp-option=3,$SERVER
+# DNS
+dhcp-option=6,$SERVER,8.8.8.8
+server=8.8.4.4
+# Broadcast Address
+dhcp-option=28,10.0.0.255
+# NTP Server
+dhcp-option=42,0.0.0.0
+
+pxe-prompt="Press F8 for menu.",1
+# pxe-service=x86PC,"Install CentOS 7 from network server $SERVER", pxelinux
+pxe-service=x86PC,"Install CentOS 7 from network server $SERVER", grldr
+enable-tftp
+tftp-root=/var/tftp
+EOF
+
+  mkdir /var/tftp/pxelinux.cfg  
+  cat > /var/tftp/pxelinux.cfg/default << EOF
+default linux
+prompt 1
+timeout 60
+display boot.msg
+label linux
+  menu label "Hi"
+  menu default
+  text help
+       Hi, now installing.
+  endtext
+  kernel vmlinuz
+  append initrd=initrd.img text ks=ftp://$SERVER/pub/abc.cfg #quiet   # 这个地方指定了ks.cfg文件下载路径，后边会生成该文件
+EOF
+
+  #mkdir /var/tftp/menu.lst
+  #cat > /var/tftp/menu.lst/default << EOF
+  cat > /var/tftp/menu.lst << EOF
+color white/blue blue/yellow light-red/blue 10
+foreground FFFFFF
+background 0000AD
+timeout 3
+default 2
+#splashimage (pd)/splash.xpm
+
+title LMT2003.ISO
+map --mem /LMT2003.ISO (0xff)
+map --hook
+chainloader (0xff)
+
+title LMT.ISO
+map --mem /LMT.ISO (0xff)
+map --hook
+root (0xff)
+chainloader (0xff)
+
+title WinXP-SP3.iso
+map --mem /WinXP-SP3.iso (0xff)
+map --hook
+chainloader (0xff)
+
+title w7pe.iso
+map --mem /w7pe.iso (0xff)
+map --hook
+root (0xff)
+chainloader (0xff)
+
+title u2.dsk.gz
+map --mem (pd)/u2.gz (hd0)
+map --hook
+root (hd0,0)
+chainloader /ntldr
+
+title WINPE3
+kernel (pd)/memdisk iso raw
+initrd (pd)/LMT2003.ISO
+
+title WINPE2
+kernel (pd)/memdisk iso raw
+initrd (pd)/LMT.ISO
+#then in new grub : chainloader /ILMT/BOOTB64
+#or configure /ILMT/GRUB/MENU.LST
+
+title WINPE
+kernel (pd)/memdisk iso raw
+initrd (pd)/w7pe.iso
+
+title linux
+kernel (pd)/vmlinuz text ks=ftp://172.16.2.153/pub/abc.cfg
+initrd (pd)/initrd.img
+
+title pxelinux
+pxe keep
+chainloader --force (pd)/pxelinux.0
+
+title pxe
+pxe detect
+
+title command line
+commandline
+
+title reboot
+reboot
+
+title halt
+halt
+EOF
+
+  cat > /var/ftp/pub/abc.cfg << EOF
+install
+keyboard 'cn'
+reboot
+rootpw labcloud
+lang zh_CN
+url --url="ftp://$SERVER/pub/centos"
+selinux --disabled
+timezone Asia/Shanghai
+bootloader --location=mbr
+zerombr
+clearpart --all --initlabel 
+part /boot --fstype="xfs" --size=200
+part swap --fstype="swap" --size=500
+part / --fstype="xfs" --grow --size=1
+%packages --nobase
+%end
+EOF
+
+  chmod -R 755 /var/ftp/pub
+  chmod -R 755 /var/tftp/
+  mkdir /var/ftp/pub/centos
+  
+  umount /var/ftp/pub/centos/
+  mount -o mode=755 /var/ftp/pub/CentOS-7-x86_64-DVD-1611.iso /var/ftp/pub/centos
+  ls -l /var/ftp/pub/centos/
+  closeFireWall
+  for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld kube-proxy kubelet flanneld docker dnsmasq vsftpd; do
+    systemctl stop $SERVICES
+    systemctl disable $SERVICES
+  done
+  for SERVICES in dnsmasq vsftpd; do
+    systemctl restart $SERVICES
+    systemctl status $SERVICES
+    systemctl enable $SERVICES
+  done
+  netstat -atnp | grep -i list
+  #tailf /var/log/messages
+  #journalctl -xe
+}
+function stopPXEServer(){
+  for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld kube-proxy kubelet flanneld docker dnsmasq vsftpd; do
+    systemctl stop $SERVICES
+    systemctl disable $SERVICES
+  done
+}
+#擦掉mbr，从而从网络加载裸机镜像（或OS）。
+function eraseDiskMBR(){
+  dd if=/dev/sda of=/root/mbr.bak bs=512 count=1
+  dd if=/dev/zero of=/dev/sda bs=512 count=1
+}
+#从网络完OS后可以再恢复(也可以安装新的OS)。
+function recoverDiskMBR(){
+  dd if=/root/mbr.bak of=/dev/sda bs=512 count=1
+}
+
 #main
 
 #entry
