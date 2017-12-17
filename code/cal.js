@@ -175,12 +175,13 @@ var cloud = (function (){
   }
   function deploy2(){
     for(var i=0; i<machines.length; i++){
-      show(machines, i);
-      runCommands(false, machines[i], ["setupNode "+masterIndex(machines)+" "+dns(machines)+" > 2 2>&1"]);
+      show(machines, i);      
+      //runCommands(false, machines[i], ["setupNode "+masterIndex(machines)+" "+dns(machines)+" > 2 2>&1"]);
+      runCommands(false, machines[i], ["installClusterApp2"]);
     }
     return object;
   }
-  function deploy2Config(){
+  function deployConfig(){
     for(var i=0; i<machines.length; i++){
       show(machines, i);
       runCommands(false, machines[i], ["installClusterAppConfig "+masterIndex(machines)+" "+dns(machines)+" > 2 2>&1"]);
@@ -327,7 +328,7 @@ var cloud = (function (){
   object.base=base;
   object.deploy1=deploy1;
   object.deploy2=deploy2;
-  object.deploy2Config=deploy2Config;
+  object.deployConfig=deployConfig;
   object.init=initHadoop
   object.startHadoop=startHadoop;
   object.stopHadoop=stopHadoop;

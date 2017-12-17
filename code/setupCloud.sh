@@ -231,10 +231,15 @@ function installClusterApp2(){
   
   rm -f -R jdk1.8.0_73
   rm -f -R hadoop-2.6.4
-  rm -f -R hbase-1.1.5
+  #rm -f -R hbase-1.1.5
+  rm -f -R hbase-1.2.6
   tar zxvf center/jdk-8u73-linux-x64.tar.gz
   tar zxvf center/hadoop-2.6.4.tar.gz
-  tar zxvf center/hbase-1.1.5-bin.tar.gz
+  #tar zxvf center/hbase-1.1.5-bin.tar.gz
+  tar zxvf center/hbase-1.2.6-bin.tar.gz
+  
+  rm -fR zookeeper
+  mkdir zookeeper
   
   rm -fR ~/.ssh
   mkdir ~/.ssh
@@ -246,12 +251,12 @@ function installClusterApp2(){
   mkdir conf
   cp -R hadoop-2.6.4/etc/hadoop/* conf/  
     
-  ls ~/hbase-1.1.5/lib | grep hadoop
-  rm -rf ls ~/hbase-1.1.5/lib/hadoop*.jar
-  find ~/hadoop-2.6.4/share/hadoop -name "hadoop*jar" | xargs -i cp {} ~/hbase-1.1.5/lib/
-  rm -rf ls ~/hbase-1.1.5/lib/hadoop*sources.jar
+  #ls ~/hbase-1.1.5/lib | grep hadoop
+  #rm -rf ls ~/hbase-1.1.5/lib/hadoop*.jar
+  #find ~/hadoop-2.6.4/share/hadoop -name "hadoop*jar" | xargs -i cp {} ~/hbase-1.1.5/lib/
+  #rm -rf ls ~/hbase-1.1.5/lib/hadoop*sources.jar
   #删掉aws否则会自动加载而发现依赖不足，进而无法启动
-  rm -rf ls ~/hbase-1.1.5/lib/hadoop-aws-2.6.4.jar
+  #rm -rf ls ~/hbase-1.1.5/lib/hadoop-aws-2.6.4.jar
 
 }
 function installClusterAppConfig(){
@@ -313,13 +318,14 @@ EOF
   sed -i s/,/\\n/g conf/slaves
   sed -i 's/^.*-//g' conf/slaves
   
-  cp conf/slaves ~/hbase-1.1.5/conf/regionservers
-  cat > ~/hbase-1.1.5/conf/hbase-site.xml << EOF
+  cp conf/slaves ~/hbase-1.2.6/conf/regionservers
+  cat > ~/hbase-1.2.6/conf/hbase-site.xml << EOF
 <configuration>
  <property><name>hbase.rootdir</name><value>hdfs://node$1:9000/hbase</value></property>
  <property><name>hbase.cluster.distributed</name><value>true</value></property>
  <property><name>hbase.master</name><value>node$1:60000</value></property>
  <property><name>hbase.zookeeper.quorum</name><value>`echo $2 | sed 's/[0-9\.]*-//g'`</value></property>
+ <property><name>hbase.zookeeper.property.dataDir</name><value>file:/home/hds/zookeeper</value></property> 
 </configuration>
 EOF
   
@@ -380,11 +386,11 @@ function startHadoopCluster(){
   ~/hadoop-2.6.4/sbin/start-dfs.sh
   ~/hadoop-2.6.4/sbin/start-yarn.sh
   ~/hadoop-2.6.4/bin/hdfs dfsadmin -safemode leave
-  ~/hbase-1.1.5/bin/start-hbase.sh
+  ~/hbase-1.2.6/bin/start-hbase.sh
   jps
 }
 function stopHadoopCluster(){
-  ~/hbase-1.1.5/bin/stop-hbase.sh
+  ~/hbase-1.2.6/bin/stop-hbase.sh
   ~/hadoop-2.6.4/sbin/stop-yarn.sh
   ~/hadoop-2.6.4/sbin/stop-dfs.sh
   jps
