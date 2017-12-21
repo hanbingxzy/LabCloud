@@ -8,17 +8,18 @@ function caculate(formulation){
 var cloud = (function (){
   /*如何收集结点信息是个问题.*/
   var machines = [
-    {"IP":"172.16.2.109", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"},
-    {"IP":"172.16.2.193", "isPhysical": true, "MAC":"60a44cad55fb"},
-    {"IP":"172.16.2.36", "NC":"172.16.2.80", "vmware":"D:\\VMware\\VM\\vmware.exe", "path":"D:\\VMspace\\LabCloud\\LabCloud.vmx"}
-    /*    ,
-    {"IP":"172.16.2.222"}*/
+    {"IP":"172.16.2.23", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"},
+    {"IP":"172.16.2.202", "isPhysical": true, "MAC":"60a44cad55fb"}
+    ,
+    {"IP":"172.16.2.51", "NC":"172.16.2.80", "vmware":"D:\\VMware\\VM\\vmware.exe", "path":"D:\\VMspace\\LabCloud\\LabCloud.vmx"}
+    /* 
+    */
   ];
   var originIP = "172.16.2.70";
   var originPWD = "123456";
   var pwd = "labcloud"
   var vmware = "D:\\wangqi\\cache\\yang\\vm10\\vmware.exe";
-  var pxeMachine={"IP":"172.16.2.153", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
+  var pxeMachine={"IP":"172.16.2.109", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
   var nc = "D:\\wangqi\\mid\\yang\\executable\\nc.exe";
 
 
@@ -169,7 +170,8 @@ var cloud = (function (){
     WScript.Echo("安装log在集群各自结点上（如/root/1,/home/hds/2)")
     for(var i=0; i<machines.length; i++){
       show(machines, i);
-      setup(machines, i);
+      //setup(machines, i);
+      runCommands(true, machines[i], ["deploy "+originIP+" "+originPWD]);
     }
     return object;
   }

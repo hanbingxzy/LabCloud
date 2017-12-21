@@ -260,6 +260,21 @@ function installClusterApp2(){
 
 }
 function installClusterAppConfig(){
+  rm -f -R /tmp/tmp
+  rm -f -R /home/hds/namenodeNameDir
+  rm -f -R /home/hds/datanodeDataDir
+  rm -f -R /home/hds/logs
+  rm -fR /home/hds/zookeeper
+  rm -fR /home/hds/conf
+
+  mkdir /tmp/tmp
+  mkdir /home/hds/namenodeNameDir
+  mkdir /home/hds/datanodeDataDir
+  mkdir /home/hds/logs
+  mkdir /home/hds/zookeeper
+  mkdir /home/hds/conf
+  cp -R hadoop-2.6.4/etc/hadoop/* conf/
+
   cat > .bashrc << EOF
 # Source global definitions
 if [ -f /etc/bashrc ]; then
@@ -329,6 +344,34 @@ EOF
 </configuration>
 EOF
   
+}
+
+function deploy(){
+  mkdir ~/center  
+  umount ~/center
+  mount -t cifs -o username=guest,rw,dir_mode=0777,file_mode=0777 //$1/center ~/center
+  ls -l ~/center
+
+  rm -f -R /home/hds/jdk1.8.0_73
+  rm -f -R /home/hds/hadoop-2.6.4
+  rm -f -R /home/hds/hbase-1.2.6
+  rm -fR /home/hds/.ssh
+
+  cd /home/hds
+  tar zxvf ~/center/jdk-8u73-linux-x64.tar.gz
+  tar zxvf ~/center/hadoop-2.6.4.tar.gz
+  tar zxvf ~/center/hbase-1.2.6-bin.tar.gz
+  mkdir /home/hds/.ssh
+  cp ~/center/rsa/* .ssh/
+
+  chown -R hds /home/hds
+  chgrp -R hadoop /home/hds  
+#  chown -R hds /tmp/tmp
+#  chgrp -R hadoop /tmp/tmp
+  chmod -R 700 .ssh/
+  chmod -R 600 .ssh/authorized_keys
+  
+  umount ~/center
 }
 
 #main
@@ -1330,7 +1373,7 @@ kernel (pd)/memdisk iso raw
 initrd (pd)/w7pe.iso
 
 title linux
-kernel (pd)/vmlinuz text ks=ftp://172.16.2.153/pub/abc.cfg
+kernel (pd)/vmlinuz text ks=ftp://$SERVER/pub/abc.cfg
 initrd (pd)/initrd.img
 
 title pxelinux
