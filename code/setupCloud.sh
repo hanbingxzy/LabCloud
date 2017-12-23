@@ -29,6 +29,7 @@ function console(){
 function setHostname(){
   sed -i s/HOSTNAME=.*/HOSTNAME=node$1/ /etc/sysconfig/network
   cat /etc/sysconfig/network
+  /bin/hostname node$1
 }
 function setHOSTS(){
   cat > /etc/hosts << EOF
@@ -1272,18 +1273,19 @@ function startPXEServer(){
   #yum -y install vsftpd ImageMagick
   #convert -colors 14 /var/tftp/splash.jpg /var/tftp/splash.xpm
   
-  ifconfig ens32:2 192.168.13.1 netmask 255.255.255.0
+  SERVER=`ifconfig | grep -o "inet 172.16.2.[0-9]*" | awk '{print $2}'`
+  
+#  ifconfig ens32:2 192.168.13.1 netmask 255.255.255.0
+#  SERVER=`ifconfig | grep -o "inet 192.168.13.[0-9]*" | awk '{print $2}'`
 
-#  SERVER=`ifconfig | grep -o "inet 172.16.2.[0-9]*" | awk '{print $2}'`
-  SERVER=`ifconfig | grep -o "inet 192.168.13.[0-9]*" | awk '{print $2}'`
   
   cat > /etc/dnsmasq.conf << EOF
 interface=ens32
 #bind-interfaces
 domain=centos7.lan
 # DHCP range-leases
-#dhcp-range= ens32,172.16.2.3,172.16.2.30,255.255.255.0,1h
-dhcp-range= ens32,192.168.13.3,192.168.13.30,255.255.255.0,1h
+dhcp-range= ens32,172.16.2.3,172.16.2.30,255.255.255.0,1h
+#dhcp-range= ens32,192.168.13.3,192.168.13.30,255.255.255.0,1h
 # PXE
 dhcp-match=set:bios,60,PXEClient
 dhcp-boot=pxelinux.0,pxeserver,$SERVER
@@ -1327,8 +1329,12 @@ color white/blue blue/yellow light-red/blue 10
 foreground FFFFFF
 background 0000AD
 timeout 3
-default 2
+default 0
 #splashimage (pd)/splash.xpm
+
+title linux
+kernel (pd)/vmlinuz text ks=ftp://$SERVER/pub/abc.cfg
+initrd (pd)/initrd.img
 
 title LMT2003.ISO
 map --mem /LMT2003.ISO (0xff)
@@ -1372,10 +1378,6 @@ title WINPE
 kernel (pd)/memdisk iso raw
 initrd (pd)/w7pe.iso
 
-title linux
-kernel (pd)/vmlinuz text ks=ftp://$SERVER/pub/abc.cfg
-initrd (pd)/initrd.img
-
 title pxelinux
 pxe keep
 chainloader --force (pd)/pxelinux.0
@@ -1395,13 +1397,17 @@ EOF
 
   cat > /var/ftp/pub/abc.cfg << EOF
 install
-keyboard 'cn'
-reboot
+#reboot
+poweroff
+#keyboard 'cn'
+keyboard 'us'
+#lang zh_CN
+lang en_US
 rootpw labcloud
-lang zh_CN
 url --url="ftp://$SERVER/pub/centos"
 selinux --disabled
 timezone Asia/Shanghai
+#network  --bootproto=dhcp --device=eth0 --onboot=on
 bootloader --location=mbr
 zerombr
 clearpart --all --initlabel 
@@ -1409,6 +1415,27 @@ part /boot --fstype="xfs" --size=200
 part swap --fstype="swap" --size=500
 part / --fstype="xfs" --grow --size=1
 %packages --nobase
+%end
+%pre
+curl http://172.16.2.70:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
+%end
+%post --interpreter=/bin/bash --log=/root/ks-post.log
+#wget下载hadoop文件的复制和配制脚本，并执行？
+#但此时的linux环境能够运行这个脚本吗？ 在安装时可按alt+tab切换到shell，发现可以执行curl和wget，还可测试环境的其它部分。
+#wget时传参数，服务端返回特定于该物理结点的执行脚本。
+#脚本只是复制文件和修改文件
+cat >> /etc/crontab << EOFA
+* * * * * root ping -c 3 172.16.2.70 >> /root/3.txt
+* * * * * root curl http://172.16.2.70:3/?MAC=\\\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \\\$2}' | sed 's/://g')
+EOFA
+#systemctl restart crond
+#这里\$要转义
+nic=\$(ip a | grep  -o "^.: en[^:]*" | awk '{print \$2}')
+echo \$nic
+ethtool -s \$nic wol g
+ethtool \$nic
+ls / 2>&1 >> /root/post-install.log
+curl http://172.16.2.70:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
 %end
 EOF
 

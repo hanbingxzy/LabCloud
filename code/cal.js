@@ -4,23 +4,96 @@ function caculate(formulation){
 	return result;
 }
 
+var ForReading = 1, ForWriting = 2;
+
+
+var translator = (function(){
+  function readAll(path){
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var f = fso.OpenTextFile(path, ForReading);
+    var all = f.ReadAll();
+    f.close();
+    return all;
+  }
+  function writeAll(path, content){
+    var fso = new ActiveXObject("Scripting.FileSystemObject");
+    var f = fso.OpenTextFile(path, ForWriting, true);
+    f.Write(content);
+    f.close();
+  }
+	function jsonStringToObj(obj) {
+		return eval('(' + obj + ')');
+	}
+	function objToJsonString(obj) {
+		var THIS = this;
+		switch (typeof (obj)) {
+		case 'string':
+			return '"' + obj.replace(/(["\\])/g, '\\$1') + '"';
+		case 'array':
+			return '[' + obj.map(THIS.objToJsonString).join(',') + ']';
+		case 'object':
+			if (obj instanceof Array) {
+				var strArr = [];
+				var len = obj.length;
+				for ( var i = 0; i < len; i++) {
+					strArr.push(THIS.objToJsonString(obj[i]));
+				}
+				return '[' + strArr.join(',') + ']';
+			} else if (obj == null) {
+				return 'null';
+
+			} else {
+				var string = [];
+				for ( var property in obj)
+					string.push(THIS.objToJsonString(property) + ':'
+							+ THIS.objToJsonString(obj[property]));
+				return '{' + string.join(',') + '}';
+			}
+
+		case 'number':
+			return obj;
+		case 'boolean':
+			return obj;
+		case false:
+			return obj;
+		}
+	}
+	
+	function copyObj(src, dst){
+		for(var i in src) dst[i] = src[i];
+		return dst;
+	}
+	function copy(obj){
+		var o = {};
+		for(var i in obj) o[i] = obj[i];
+		return o;
+	}
+	
+	function loadJson(path){
+    return jsonStringToObj(readAll(path));
+	}
+	
+	var translator = {
+			objToJsonString:objToJsonString,
+			jsonStringToObj:jsonStringToObj,
+			copyObj:copyObj,
+			copy:copy,
+			readAll:readAll,
+			writeAll:writeAll,
+			loadJson:loadJson
+	};
+	return translator
+})();
+
 
 var cloud = (function (){
   /*如何收集结点信息是个问题.*/
-  var machines = [
-    {"IP":"172.16.2.23", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"},
-    {"IP":"172.16.2.202", "isPhysical": true, "MAC":"60a44cad55fb"}
-    ,
-    {"IP":"172.16.2.51", "NC":"172.16.2.80", "vmware":"D:\\VMware\\VM\\vmware.exe", "path":"D:\\VMspace\\LabCloud\\LabCloud.vmx"}
-    /* 
-    */
-  ];
+  var machines = translator.loadJson("config.json");
+  var pxeMachine={"IP":"172.16.2.133", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
   var originIP = "172.16.2.70";
   var originPWD = "123456";
   var pwd = "labcloud"
   var vmware = "D:\\wangqi\\cache\\yang\\vm10\\vmware.exe";
-  var pxeMachine={"IP":"172.16.2.109", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
-  var nc = "D:\\wangqi\\mid\\yang\\executable\\nc.exe";
 
 
   var object = {};
@@ -40,7 +113,6 @@ var cloud = (function (){
   }
   
   function localHOSTS(){
-    var ForReading = 1, ForWriting = 2;
     var fso = new ActiveXObject("Scripting.FileSystemObject");
     var tmp      = fso.OpenTextFile("c:\\Windows\\System32\\drivers\\etc\\hosts", ForWriting, true);
     tmp.Write("127.0.0.1 localhost\n::1 localhost\n172.20.54.12 router\n" + dns2(machines));
@@ -62,7 +134,8 @@ var cloud = (function (){
     
     var shell = WScript.CreateObject("WScript.Shell");    
     if(root)
-      shell.run("putty -m setupCloud.tmp.sh -pw " +pwd+ " root@" +machine.IP, 1, true);
+      shell.run("cmd /c \"echo y | plink -m setupCloud.tmp.sh -pw "+pwd+" root@"+machine.IP+"\"", 1, true);
+      //shell.run("putty -m setupCloud.tmp.sh -pw " +pwd+ " root@" +machine.IP, 1, true);
     else
       shell.run("putty -m setupCloud.tmp.sh -pw hds hds@" +machine.IP, 1, true);
   }
@@ -76,7 +149,7 @@ var cloud = (function (){
     WScript.Echo(
     (isRunning(machines[i])?"on ":"off") + " " + 
     (machines[i].isMaster?"master":"slave ") +  " " + 
-    i + " " + machines.length + " " + machines[i].IP
+    i+" "+ machines.length+" "+machines[i].MAC +" "+machines[i].IP
     );
   }
   function dns(machines){
@@ -103,14 +176,57 @@ var cloud = (function (){
   function start(machine){
     var shell = WScript.CreateObject("WScript.Shell");    
     if(machine.isPhysical){
-      shell.run("wolcmd " +machine.MAC+ " 255.255.255.255 255.255.255.255 255", 1);    
+      shell.run("wolcmd "+machine.MAC+" 255.255.255.255 255.255.255.255 255", 1);    
     } else if(machine.NC){
-      shell.run("cmd /c echo "+machine.vmware+" -x "+machine.path+" ^&^& echo exit | "+nc+" "+machine.NC+" 3", 1);      
+      shell.run("cmd /c echo "+machine.vmware+" -x "+machine.path+" ^&^& echo exit | nc "+machine.NC+" 3", 1);      
       //echo D:\VMware\VM\vmware.exe -x D:\VMspace\LabCloud\LabCloud.vmx ^&^& echo exit | nc 172.16.2.80 3
     } else if(machine.path){
-      shell.run(vmware + " -x " + machine.path, 1);
+      shell.run(vmware+" -x "+machine.path, 1);
     }
   }
+  function readAReport(){
+    var o = {};  
+    var shell = new ActiveXObject("WScript.Shell");
+    var process = shell.Exec("nc.exe -vvlnp 3");
+    var line;
+    //要先读StdErr
+    line = process.StdErr.ReadLine();WScript.Echo(line);
+    line = process.StdErr.ReadLine();WScript.Echo(line);
+    o.IP = line.replace(/connect to \[.*?\] from \(\w+\) \[(.*?)\] \d+$/ig, "$1");
+    //要先写才能读StdOut
+    var content = "OK";process.StdIn.Write("HTTP/1.1 200 OK\r\nContent-Length: "+content.length+"\r\n\r\n"+content+"\r\n");
+    line = process.StdOut.ReadLine();WScript.Echo(line);
+    o.MAC = line.replace(/GET \/\?MAC=(.*?) HTTP\/1\.1/,"$1");WScript.Echo("read "+o.MAC+" "+o.IP);
+    return o;
+  }
+  function findMachine(machines, o){
+    for(var i=0; i<machines.length; i++) 
+      if(machines[i].MAC.toUpperCase() == o.MAC.toUpperCase()) 
+        return machines[i];
+    return null;
+  }
+  function updateMachine(machines, o, update){
+    var machine = findMachine(machines, o);
+    if(null != machine) {
+      if(update) machine.IP = o.IP;
+      machine.reported = true;
+    }
+  }
+  function existsNotReported(machines){
+    for(var i=0; i<machines.length; i++) 
+      if(!machines[i].reported) return true;
+    return false;
+  }
+  function readReport(update){
+    WScript.Echo("waitting to connection ...");    
+    for(var i=0; i<machines.length; i++) 
+      machines[i].reported = false;
+    while(existsNotReported(machines))
+      updateMachine(machines, readAReport(), update);
+    return object
+	}
+
+  
   function clusterOff(){
     for(var i=0; i<machines.length; i++){
       show(machines, i);
@@ -269,6 +385,10 @@ var cloud = (function (){
     }
     return object;
   }
+  function PXESTATE(machine){
+    var shell = WScript.CreateObject("WScript.Shell");    
+    shell.run("cmd /c \"echo y | plink -pw "+pwd+" root@"+machine.IP+"\" tailf /var/log/messages", 1, false);
+  }
   function startPXEServer(){
     var machine=pxeMachine;
     if(!isRunning(machine)) {
@@ -276,6 +396,7 @@ var cloud = (function (){
       while(!isRunning(machine)) ;
       sleep(7000);
     }
+    PXESTATE(machine);
     runCommands(true, machine, ["startPXEServer  > 1 2>&1"]);
     return object;
   }
@@ -316,13 +437,16 @@ var cloud = (function (){
   object.test=test;
   object.addRoute=addRoute;
   object.hosts=localHOSTS;
+  object.sleep=sleep;
+
+  object.state=runningState;  
   object.off=clusterOff;
   object.on=clusterOn;
   object.waitOn=function(){return waitUntilOn2(true);};
   object.waitOff=function(){return waitUntilOn2(false);};
-  object.sleep=sleep;
+  object.readAReport=readAReport;
+  object.readReport=readReport;
   object.reboot=clusterReboot;
-  object.state=runningState;
   object.stopPXEServer=stopPXEServer;
   object.startPXEServer=startPXEServer;
   object.eraseAll=eraseAll;
