@@ -8,6 +8,9 @@ function disconnect(){
   #disconnect internet
   curl "http://202.193.80.124/F.htm" -H "Accept-Encoding: gzip, deflate, sdch" -H "Accept-Language: zh-CN,zh;q=0.8" -H "Upgrade-Insecure-Requests: 1" -H "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/46.0.2490.80 Safari/537.36" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" -H "Referer: http://202.193.80.124/" -H "Connection: keep-alive" --compressed >/dev/null 2>&1
 }
+function getIP(){
+  ip ad | grep -o "inet 172.16.2.[0-9]*" | awk '{print $2}'
+}
 function IP(){
   #show ip
   whereis ifconfig
@@ -20,6 +23,15 @@ function download(){
   #download [hadoop](http://hadoop.apache.org/releases.html)
   wget --no-check-certificate -O hadoop-2.6.5.tar.gz http://www.apache.org/dyn/closer.cgi/hadoop/common/hadoop-2.6.5/hadoop-2.6.5.tar.gz
 }
+function nettools(){
+  cat > /etc/apt/sources.list << EOF
+deb http://mirrors.163.com/debian/ jessie main
+deb http://mirrors.163.com/debian/ jessie-updates main
+deb http://mirrors.163.com/debian-security/ jessie/updates main
+EOF
+  apt-get update && apt-get -y install net-tools iputils-ping
+}
+
 #仅启动console，不启动桌面
 function console(){
   sed -i 's/id:.:initdefault/id:3:initdefault/' /etc/inittab
@@ -459,6 +471,10 @@ function removeContainers(){
   for SERVICES in `docker ps -a | grep Exited | awk '{print $1}'`; do docker rm $SERVICES; done
 }
 function setupRootK8sCommon(){
+  #问题 12:09 2018/1/4 http://mirror.bit.edu.cn/centos/7.4.1708/extras/x86_64/Packages/skopeo-containers-0.1.26-2.dev.git2e8377a.el7.centos.x86_64.rpm: [Errno 12] Timeout on http://mirror.bit.edu.cn/centos/7.4.1708/extras/x86_64/Packages/skopeo-containers-0.1.26-2.dev.git2e8377a.el7.centos.x86_64.rpm: (28, 'Operation too slow. Less than 1000 bytes/sec transferred the last 30 seconds') Trying other mirror.
+  #应该是yum源太慢
+
+
   #有时这步操作很慢,但之前都好快啊
   #console
   setHostname $2
@@ -472,8 +488,17 @@ gpgcheck=0
 EOF
 
   connect
-  yum -y install --enablerepo=virt7-docker-common-release kubernetes etcd flannel
+  #rm /etc/yum.repos.d/CentOS-Base.repo
+  #curl -o /etc/yum.repos.d/CentOS7-Base-163.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo
+  #yum -y update --enablerepo=virt7-docker-common-release
+  #yum clean metadata
+  yum -y install *rhsm*
+  yum --enablerepo=virt7-docker-common-release -y install kubernetes etcd flannel
   disconnect
+  
+#  echo sleep
+#  sleep 7
+  
   
   sed -i 's/KUBE_MASTER="--master=http:\/\/.*:8080"/KUBE_MASTER="--master=http:\/\/node0:8080"/' /etc/kubernetes/config
   sed -i 's/FLANNEL_ETCD_ENDPOINTS="http:\/\/.*:2379"/FLANNEL_ETCD_ENDPOINTS="http:\/\/node0:2379"/;s/FLANNEL_ETCD_PREFIX=".*"/FLANNEL_ETCD_PREFIX="\/kube-centos\/network"/' /etc/sysconfig/flanneld
@@ -489,8 +514,8 @@ function setupRootK8sMasterOnly(){
   etcdctl mk /kube-centos/network/config "{ \"Network\": \"192.168.0.0/16\", \"SubnetLen\": 24, \"Backend\": { \"Type\": \"vxlan\" } }"  
 }
 function setupRootK8sSlaveOnly(){
-  sed -i 's/KUBELET_ADDRESS="--address=.*"/KUBELET_ADDRESS="--address=0.0.0.0"/;s/KUBELET_HOSTNAME="--hostname-override=.*"/KUBELET_HOSTNAME="--hostname-override=node'$1'"/;s/KUBELET_API_SERVER="--api-servers=http:\/\/.*:8080"/KUBELET_API_SERVER="--api-servers=http:\/\/node0:8080"/;s/KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=.*"/KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=node1:5000\/pod-infrastructure"/;s/KUBELET_ARGS=.*/KUBELET_ARGS="--cluster-dns=10.254.10.2 --cluster-domain=hi --allow-privileged=true"/' /etc/kubernetes/kubelet
-  sed -i 's/OPTIONS=\x27--selinux-enabled --log-driver=journald --signature-verification=false.*\x27/OPTIONS=\x27--selinux-enabled --log-driver=journald --signature-verification=false --registry-mirror=https:\/\/wzmto2ol.mirror.aliyuncs.com --insecure-registry node1:5000 --add-registry node1:5000\x27/' /etc/sysconfig/docker
+  sed -i 's/KUBELET_ADDRESS="--address=.*"/KUBELET_ADDRESS="--address=0.0.0.0"/;s/KUBELET_HOSTNAME="--hostname-override=.*"/KUBELET_HOSTNAME="--hostname-override=node'$1'"/;s/KUBELET_API_SERVER="--api-servers=http:\/\/.*:8080"/KUBELET_API_SERVER="--api-servers=http:\/\/node0:8080"/;s/KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=.*"/KUBELET_POD_INFRA_CONTAINER="--pod-infra-container-image=node0:5000\/pod-infrastructure"/;s/KUBELET_ARGS=.*/KUBELET_ARGS="--cluster-dns=10.254.10.2 --cluster-domain=hi --allow-privileged=true"/' /etc/kubernetes/kubelet
+  sed -i 's/OPTIONS=\x27--selinux-enabled --log-driver=journald --signature-verification=false.*\x27/OPTIONS=\x27--selinux-enabled --log-driver=journald --signature-verification=false --registry-mirror=https:\/\/wzmto2ol.mirror.aliyuncs.com --insecure-registry node0:5000 --add-registry node0:5000\x27/' /etc/sysconfig/docker
 }
 function setupRootK8sMaster(){
   echo installing
@@ -530,34 +555,39 @@ function startSlave(){
   closeFireWall
   startSlaveSoftware
 }
-
-function downloadImages(){  
-  #变量定义时=号左右不能有空格
-  #基础服务
-  #BASE='registry.access.redhat.com/rhel7/pod-infrastructure docker.io/mritd/kubernetes-dashboard-amd64 docker.io/ist0ne/kubedns-amd64 docker.io/ist0ne/kube-dnsmasq-amd64 docker.io/ist0ne/exechealthz-amd64 registry:2 docker.io/docs/docker.github.io'
-  #移动客户端  
-  #MOBILE=''
-  #高吞吐WEB
-  #大数据
-  #物联网
-  WEB='nginx:1.13 tomcat:8.5 node:8.4 php:7.1-apache php:5.6-apache php:7.1-fpm mysql:5.7 redis:4.0'
-  for X in $BASE $MOBILE $WEB ; do docker pull $X && docker push $X && docker rmi $X;  done
-
-
-  #原镜像的tag应该还是原来的，不应去掉。不然如何区分基与修改版？
-  for X in registry kubernetes-dashboard-amd64 pod-infrastructure kube-dnsmasq-amd64 exechealthz-amd64 kubedns-amd64 nginx node tomcat mysql nginx-slim busybox docker.github.io php redis; do
-    echo docker tag `docker images | grep $X | head -n 1 | awk '{print $3}'` node1:5000/$X
-    echo docker push node1:5000/$X
-    echo docker rmi node1:5000/$X
+function stopMaster(){
+  for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld; do
+      systemctl stop $SERVICES
   done
-  for X in redis; do
-    imageID=$X:`docker images | grep $X | head -n 1 | awk '{print $2}'`
-    echo docker push $imageID
-    echo docker rmi $imageID
+}
+function stopSlave(){
+  for SERVICES in kube-proxy kubelet flanneld docker; do
+      systemctl stop $SERVICES
   done
+}
+
+function downloadIaaSImage(){  
+  connect
+  #解决open /etc/docker/certs.d/registry.access.redhat.com/redhat-ca.crt: no such file or directory
+  yum install *rhsm* -y
+  #在下载pod-infrastructure时，经常超时
+  BASE='docker.io/registry:2 registry.access.redhat.com/rhel7/pod-infrastructure docker.io/mritd/kubernetes-dashboard-amd64 docker.io/ist0ne/kubedns-amd64 docker.io/ist0ne/kube-dnsmasq-amd64 docker.io/ist0ne/exechealthz-amd64 docker.io/busybox'
+  for X in $BASE ; do docker pull $X;  done  
+  disconnect
+  
+  docker run -d -p 5000:5000 --restart=always --name registry registry:2
+  #http://node0:5000/v2/_catalog
+
+  for X in registry pod-infrastructure kubernetes-dashboard-amd64 kube-dnsmasq-amd64 exechealthz-amd64 kubedns-amd64 busybox; do
+    docker tag `docker images | grep $X | head -n 1 | awk '{print $3}'` node0:5000/$X
+    docker push node0:5000/$X
+    docker rmi node0:5000/$X
+  done
+
   docker images
 }
-function initK8S(){
+function configIaaSImage(){
+  K8SMASTER=`getIP`
   #dashboard
   cat > kubernetes-dashboard.yaml << EOF
 # Configuration to deploy release version of the Dashboard UI.  
@@ -584,7 +614,7 @@ spec:
     spec:  
       containers:  
       - name: kubernetes-dashboard  
-        image: node1:5000/kubernetes-dashboard-amd64  
+        image: node0:5000/kubernetes-dashboard-amd64  
         imagePullPolicy: Always  
         ports:  
         - containerPort: 9090  
@@ -593,7 +623,7 @@ spec:
           # Uncomment the following line to manually specify Kubernetes API server Host  
           # If not specified, Dashboard will attempt to auto discover the API server and connect  
           # to it. Uncomment only if the default does not work.  
-          - --apiserver-host=http://172.16.2.24:8080  
+          - --apiserver-host=http://$K8SMASTER:8080  
         livenessProbe:  
           httpGet:  
             path: /  
@@ -616,16 +646,7 @@ spec:
   selector:  
     app: kubernetes-dashboard
 EOF
-  kubectl delete -f kubernetes-dashboard.yaml
-  kubectl create -f kubernetes-dashboard.yaml
-  kubectl get pods --all-namespaces
-  kubectl describe pods/`kubectl get pods --all-namespaces | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
-  kubectl logs `kubectl get pods --all-namespaces | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
-  kubectl describe service/kubernetes-dashboard --namespace="kube-system"
 
-  kubectl describe pods/`kubectl get pods --all-namespaces | grep 'kube-dns-v9' | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
-  kubectl logs `kubectl get pods --all-namespaces | grep 'kube-dns-v9' | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
-  
  cat > skydns-rc.yaml << EOF
 apiVersion: v1
 kind: ReplicationController
@@ -676,7 +697,7 @@ spec:
             memory: 50Mi
         args:
         - -domain=cluster.local
-        - -kube_master_url=http://172.16.2.24:8080
+        - -kube_master_url=http://$K8SMASTER:8080
       - name: skydns
         image: skydns
         resources:
@@ -781,7 +802,7 @@ spec:
         # command = "/kube-dns"
         - --domain=hi 
         - --dns-port=10053
-        - --kube-master-url=http://172.16.2.24:8080
+        - --kube-master-url=http://$K8SMASTER:8080
         ports:
         - containerPort: 10053
           name: dns-local
@@ -861,27 +882,105 @@ spec:
     protocol: TCP
 EOF
 
-  #skydns-rc skydns-svc
-  for SERVICES in kube-dns_14; do
+  cat > busybox.yaml << EOF
+apiVersion: v1
+kind: ReplicationController 
+metadata: 
+    name: busybox
+    namespace: default
+spec:
+  replicas: 1 
+  selector: 
+    name: busybox
+  template: 
+    metadata: 
+      labels: 
+        name: busybox
+    spec: 
+      containers:
+        - image: busybox
+          command:
+            - sleep
+            - "3600"
+          imagePullPolicy: IfNotPresent
+          name: busybox
+      restartPolicy: Always
+EOF
+
+  cat > busybox.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata: 
+    name: busybox
+    namespace: default
+spec:
+    containers:
+      - image: busybox
+        command:
+          - sleep
+          - "3600"
+        imagePullPolicy: IfNotPresent
+        name: busybox
+    restartPolicy: Always
+EOF
+
+}
+
+function initK8S(){
+  downloadIaaSImage
+  configIaaSImage
+  
+  #skydns-rc skydns-svc #已合二为一
+  
+  for SERVICES in kubernetes-dashboard kube-dns_14 busybox ; do
     kubectl delete -f $SERVICES.yaml
     kubectl create -f $SERVICES.yaml  
     #kubectl apply -f nginx.yaml
     #kubectl describe pods/nginx
   done
 
+  #kubectl delete -f kubernetes-dashboard.yaml
+  #kubectl create -f kubernetes-dashboard.yaml
+  kubectl get pods --all-namespaces
+  kubectl describe pods/`kubectl get pods --all-namespaces | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
+  kubectl logs `kubectl get pods --all-namespaces | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
+  kubectl describe service/kubernetes-dashboard --namespace="kube-system"
 
+  kubectl describe pods/`kubectl get pods --all-namespaces | grep 'kube-dns-v9' | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
+  kubectl logs `kubectl get pods --all-namespaces | grep 'kube-dns-v9' | tail -n 1 | awk '{print $2}'` --namespace="kube-system"
+  
+  kubectl exec `kubectl get pods --all-namespaces | grep 'busybox' | tail -n 1 | awk '{print $2}'` -- nslookup `kubectl get pods --all-namespaces | grep 'busybox' | tail -n 1 | awk '{print $2}'`
+  kubectl exec busybox -- nslookup busybox
 }
 
-function nettools(){
-  cat > /etc/apt/sources.list << EOF
-deb http://mirrors.163.com/debian/ jessie main
-deb http://mirrors.163.com/debian/ jessie-updates main
-deb http://mirrors.163.com/debian-security/ jessie/updates main
-EOF
-  apt-get update && apt-get -y install net-tools iputils-ping
+function downloadPaaSImages(){
+  #变量定义时=号左右不能有空格
+  #基础服务
+  #BASE='docker.io/docs/docker.github.io'
+  #移动客户端
+  #MOBILE=''
+  #高吞吐WEB
+  #大数据
+  #物联网
+  WEB='nginx:1.13 tomcat:8.5 node:8.4 php:7.1-apache php:5.6-apache php:7.1-fpm mysql:5.7 redis:4.0'
+  for X in $BASE $MOBILE $WEB ; do docker pull $X;  done
+  #for X in $BASE $MOBILE $WEB ; do docker push $X && docker rmi $X;  done
+  #for X in $BASE $MOBILE $WEB ; do docker push $X;  done
+  
+  #原镜像的tag应该还是原来的，不应去掉。不然如何区分基与修改版？
+  for X in nginx node tomcat mysql nginx-slim docker.github.io php redis; do
+    docker tag `docker images | grep $X | head -n 1 | awk '{print $3}'` node0:5000/$X
+    docker push node0:5000/$X
+    docker rmi node0:5000/$X
+  done
+  for X in redis; do
+    imageID=$X:`docker images | grep $X | head -n 1 | awk '{print $2}'`
+    echo docker push $imageID
+    echo docker rmi $imageID
+  done
+  docker images
 }
-
-function tutorial(){
+function buildPaaSImages(){
   mkdir ~/nginx
   cd ~/nginx
   cat > nginx.conf << EOF
@@ -929,45 +1028,6 @@ ENV TZ=Asia/Shanghai
 COPY ./nginx.conf /etc/nginx/conf.d/default.conf
 COPY . /usr/share/nginx/html
 EOF
-  cat > nginx.yaml << EOF
-apiVersion: v1 
-kind: ReplicationController 
-metadata: 
-  name: nginx
-  labels:
-    app: nginx
-spec: 
-  replicas: 1 
-  selector: 
-    name: nginx 
-  template: 
-    metadata: 
-      labels: 
-        name: nginx 
-    spec: 
-      containers: 
-        - name: nginx 
-          image: nginx:v1
-          imagePullPolicy: Always 
-          ports: 
-            - containerPort: 80
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: nginx
-  labels:
-    app: nginx
-spec:
-  type: NodePort
-  ports:
-  - port: 80
-    nodePort: 31004
-    protocol: TCP
-    name: http
-  selector:
-    name: nginx
-EOF
 
   mkdir ~/node
   cd ~/node
@@ -987,20 +1047,6 @@ EXPOSE 8080
 COPY server.js .
 CMD node server.js
 EOF
-  cat > node.yaml << EOF
-apiVersion: v1
-kind: Pod
-metadata:
-  name: nodejs
-  labels:
-    app: nodejs
-spec:
-  containers:
-  - name: nodejs
-    image: node:v1
-    ports:
-    - containerPort: 8080
-EOF
   
   mkdir ~/tomcat
   cd ~/tomcat
@@ -1009,40 +1055,6 @@ FROM tomcat:8.5
 MAINTAINER Ice <54688447@qq.com>
 ADD . /usr/local/tomcat/webapps/demo
 ADD ./cis.war /usr/local/tomcat/webapps/cis.war
-EOF
-  cat > tomcat.yaml << EOF
-apiVersion: v1
-kind: ReplicationController
-metadata:
-  name: web-deployement
-spec:
-  replicas: 1
-  template:
-    metadata:
-      labels:
-        app: web_pod
-    spec:
-      containers:
-        - name: myweb
-          image: tomcat:v1
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8080
-          env:
-            - name: DB_DOMAIN_NAME
-              value: "mysql"
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: javaweb
-spec:
-  type: NodePort
-  ports:
-  - port: 8080
-    nodePort: 31002 
-  selector:
-    app: web_pod
 EOF
 
   #脚本中含$和\等不能通过cat方式写入，可使用转义但麻烦
@@ -1134,6 +1146,122 @@ MAINTAINER Ice <54688447@qq.com>
 COPY ./php.conf /usr/local/etc/php/conf.d/php.conf
 ADD carservciePHP /var/www/html/carservciePHP
 EOF
+  
+  mkdir ~/mysql
+  cd ~/mysql
+  cat > Dockerfile << EOF
+FROM mysql:5.7
+MAINTAINER Ice <54688447@qq.com>
+COPY ./cis.sql /docker-entrypoint-initdb.d/
+EOF
+
+
+  #编译镜像
+  connect
+  #php-fpm
+  #cd ~/php
+  #docker build -f Dockerfile_FPM -t php:7.1-fpm-mysql . && docker push php:7.1-fpm-mysql && docker rmi php:7.1-fpm-mysql
+  #docker build -f Dockerfile_FPM_APP -t php:fpmapp . && docker push php:fpmapp && docker rmi php:fpmapp  
+  APP='nginx node tomcat php mysql'
+  for X in $APP ; do 
+    cd ~/$X
+    docker build -t $X:v1 . && docker push $X:v1 && docker rmi $X:v1
+  done
+  disconnect
+  
+}
+function configPaaSImages(){
+  cd ~/
+  cat > nginx.yaml << EOF
+apiVersion: v1 
+kind: ReplicationController 
+metadata: 
+  name: nginx
+  labels:
+    app: nginx
+spec: 
+  replicas: 1 
+  selector: 
+    name: nginx 
+  template: 
+    metadata: 
+      labels: 
+        name: nginx 
+    spec: 
+      containers: 
+        - name: nginx 
+          image: nginx:v1
+          imagePullPolicy: Always 
+          ports: 
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+spec:
+  type: NodePort
+  ports:
+  - port: 80
+    nodePort: 31004
+    protocol: TCP
+    name: http
+  selector:
+    name: nginx
+EOF
+
+  cat > node.yaml << EOF
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nodejs
+  labels:
+    app: nodejs
+spec:
+  containers:
+  - name: nodejs
+    image: node:v1
+    ports:
+    - containerPort: 8080
+EOF
+  
+  cat > tomcat.yaml << EOF
+apiVersion: v1
+kind: ReplicationController
+metadata:
+  name: web-deployement
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: web_pod
+    spec:
+      containers:
+        - name: myweb
+          image: tomcat:v1
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DB_DOMAIN_NAME
+              value: "mysql"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: javaweb
+spec:
+  type: NodePort
+  ports:
+  - port: 8080
+    nodePort: 31002 
+  selector:
+    app: web_pod
+EOF
+
   cat > php.yaml << EOF
 apiVersion: v1
 kind: ReplicationController
@@ -1169,13 +1297,6 @@ spec:
     app: php_pod
 EOF
   
-  mkdir ~/mysql
-  cd ~/mysql
-  cat > Dockerfile << EOF
-FROM mysql:5.7
-MAINTAINER Ice <54688447@qq.com>
-COPY ./cis.sql /docker-entrypoint-initdb.d/
-EOF
   cat > mysql.yaml << EOF
 apiVersion: v1
 kind: ReplicationController 
@@ -1210,47 +1331,6 @@ spec:
     app: mysql_pod
 EOF
 
-  #编译镜像
-  connect
-  #php-fpm
-  #cd ~/php
-  #docker build -f Dockerfile_FPM -t php:7.1-fpm-mysql . && docker push php:7.1-fpm-mysql && docker rmi php:7.1-fpm-mysql
-  #docker build -f Dockerfile_FPM_APP -t php:fpmapp . && docker push php:fpmapp && docker rmi php:fpmapp  
-  APP='nginx node tomcat php mysql'
-  for X in $APP ; do 
-    cd ~/$X
-    #docker build -t $X:v1 . && docker push $X:v1 && docker rmi $X:v1
-  done
-  disconnect
-  
-  #启动
-  for X in $APP ; do 
-    cd ~/$X
-    kubectl delete -f $X.yaml
-    kubectl create -f $X.yaml
-    #kubectl apply -f nginx.yaml
-    #kubectl describe pods/nginx        
-  done
-
-  
-  
-  cd ~/
-  cat > busybox.yaml << EOF
-apiVersion: v1
-kind: Pod
-metadata: 
-    name: busybox
-    namespace: default
-spec:
-    containers:
-      - image: busybox
-        command:
-          - sleep
-          - "3600"
-        imagePullPolicy: IfNotPresent
-        name: busybox
-    restartPolicy: Always
-EOF
   
   cat > nginx.yaml << EOF
 apiVersion: v1
@@ -1269,12 +1349,30 @@ spec:
 EOF
 }
 
+function tutorial(){
+  downloadPasSImages
+  buildPaaSImages
+  configPaaSImages
+
+  cd ~/
+  #启动
+  APP='nginx node tomcat php mysql'
+  for X in $APP ; do    
+    kubectl delete -f $X.yaml
+    kubectl create -f $X.yaml
+    #kubectl apply -f nginx.yaml
+    #kubectl describe pods/nginx        
+  done
+
+}
+
 function startPXEServer(){
   #yum -y install vsftpd ImageMagick
   #convert -colors 14 /var/tftp/splash.jpg /var/tftp/splash.xpm
   
   SERVER=`ifconfig | grep -o "inet 172.16.2.[0-9]*" | awk '{print $2}'`
   
+#当前使用192.168.13.0网络，会无法上报结点ip等信息。
 #  ifconfig ens32:2 192.168.13.1 netmask 255.255.255.0
 #  SERVER=`ifconfig | grep -o "inet 192.168.13.[0-9]*" | awk '{print $2}'`
 
@@ -1286,10 +1384,12 @@ domain=centos7.lan
 # DHCP range-leases
 dhcp-range= ens32,172.16.2.3,172.16.2.30,255.255.255.0,1h
 #dhcp-range= ens32,192.168.13.3,192.168.13.30,255.255.255.0,1h
-# PXE
+# PXE 下面这句的意思是“如果vendor-class（60）为PXEClient则设置bios标志”？ 的确。
+#dhcp-match=set:bios,60,PXEClient:Arch:00000
+#dhcp-match=set:efi32,60,PXEClient:Arch:00006
 dhcp-match=set:bios,60,PXEClient
 dhcp-boot=pxelinux.0,pxeserver,$SERVER
-# Gateway
+# Gateway 以本机为网关，要开启转发和nat
 dhcp-option=3,$SERVER
 # DNS
 dhcp-option=6,$SERVER,8.8.8.8
@@ -1298,6 +1398,10 @@ server=8.8.4.4
 dhcp-option=28,10.0.0.255
 # NTP Server
 dhcp-option=42,0.0.0.0
+log-dhcp
+#过滤没有bios标志的请求，已成
+dhcp-ignore=tag:!bios
+#dhcp-host=tag:bios,ignore
 
 pxe-prompt="Press F8 for menu.",1
 # pxe-service=x86PC,"Install CentOS 7 from network server $SERVER", pxelinux
@@ -1417,7 +1521,7 @@ part / --fstype="xfs" --grow --size=1
 %packages --nobase
 %end
 %pre
-curl http://172.16.2.70:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
+#curl http://172.16.2.70:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
 %end
 %post --interpreter=/bin/bash --log=/root/ks-post.log
 #wget下载hadoop文件的复制和配制脚本，并执行？

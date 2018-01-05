@@ -89,7 +89,7 @@ var translator = (function(){
 var cloud = (function (){
   /*如何收集结点信息是个问题.*/
   var machines = translator.loadJson("config.json");
-  var pxeMachine={"IP":"172.16.2.133", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
+  var pxeMachine={"IP":"172.16.2.231", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
   var originIP = "172.16.2.70";
   var originPWD = "123456";
   var pwd = "labcloud"
@@ -115,7 +115,7 @@ var cloud = (function (){
   function localHOSTS(){
     var fso = new ActiveXObject("Scripting.FileSystemObject");
     var tmp      = fso.OpenTextFile("c:\\Windows\\System32\\drivers\\etc\\hosts", ForWriting, true);
-    tmp.Write("127.0.0.1 localhost\n::1 localhost\n172.20.54.12 router\n" + dns2(machines));
+    tmp.Write("127.0.0.1 localhost\n::1 localhost\n172.20.54.17 router\n" + dns2(machines));
     tmp.Close();
     return object;
   }
@@ -174,24 +174,29 @@ var cloud = (function (){
     runCommands(true, machine, ["nohup reboot >/dev/null 2>&1 &"]);
   }
   function start(machine){
-    var shell = WScript.CreateObject("WScript.Shell");    
+    var ins = "";
     if(machine.isPhysical){
-      shell.run("wolcmd "+machine.MAC+" 255.255.255.255 255.255.255.255 255", 1);    
+      ins = "wolcmd "+machine.MAC+" 255.255.255.255 255.255.255.255 255";
     } else if(machine.NC){
-      shell.run("cmd /c echo "+machine.vmware+" -x "+machine.path+" ^&^& echo exit | nc "+machine.NC+" 3", 1);      
-      //echo D:\VMware\VM\vmware.exe -x D:\VMspace\LabCloud\LabCloud.vmx ^&^& echo exit | nc 172.16.2.80 3
+      ins = "cmd /c echo "+machine.vmware+" -x "+machine.path+" ^&^& echo exit | nc "+machine.NC+" 3";
+      //echo D:\VMware\vmware.exe -x D:\VMspace\LabCloud\LabCloud.vmx ^&^& echo exit | nc 172.16.2.80 3
     } else if(machine.path){
-      shell.run(vmware+" -x "+machine.path, 1);
+      ins = vmware+" -x "+machine.path;
     }
+
+    var shell = WScript.CreateObject("WScript.Shell");
+    shell.run(ins, 1);
   }
   function readAReport(){
     var o = {};  
     var shell = new ActiveXObject("WScript.Shell");
-    var process = shell.Exec("nc.exe -vvlnp 3");
+    //var process = shell.Exec("nc.exe -vvlnp 3");
+    var process = shell.Exec("cmd /c \"nc.exe -vvlnp 3 2>&1\"");
     var line;
     //要先读StdErr
-    line = process.StdErr.ReadLine();WScript.Echo(line);
-    line = process.StdErr.ReadLine();WScript.Echo(line);
+    //还是重定向吧
+    line = process.StdOut.ReadLine();WScript.Echo(line);
+    line = process.StdOut.ReadLine();WScript.Echo(line);
     o.IP = line.replace(/connect to \[.*?\] from \(\w+\) \[(.*?)\] \d+$/ig, "$1");
     //要先写才能读StdOut
     var content = "OK";process.StdIn.Write("HTTP/1.1 200 OK\r\nContent-Length: "+content.length+"\r\n\r\n"+content+"\r\n");
@@ -353,7 +358,7 @@ var cloud = (function (){
       show(machines, i);
       if(isRunning(machines[i])) setupK8s(machines, i);
     }
-    return machines.length;
+    return object;
   }
   function startK8SNode(machines, i){
     var machine = machines[i];
@@ -361,17 +366,33 @@ var cloud = (function (){
     commands.push( (machine.isMaster?"startMaster":"startSlave") );
     runCommands(true, machine, commands);    
   }
-  function K8S(){
+  function startK8S(){
     for(var i=0; i<machines.length; i++){
       show(machines, i);
       if(isRunning(machines[i])) startK8SNode(machines, i);
     }
+    var shell = WScript.CreateObject("WScript.Shell");
+    shell.run("cmd /c start http://node0:8080", 1, true);
+    shell.run("cmd /c start http://node0:8080/api/v1/proxy/namespaces/kube-system/services/kubernetes-dashboard", 1, true);    
+    shell.run("cmd /c start http://node0:8080/api/v1/proxy/namespaces/kube-system/services/kube-dns", 1, true);
+    shell.run("cmd /c start http://node0:5000/v2/_catalog", 1, true);    
+    return object;
+  }
+  function stopK8S(){
+    for(var i=0; i<machines.length; i++){
+      show(machines, i);
+      if(isRunning(machines[i])) runCommands(true, machines[i], [(machines[i].isMaster?"stopMaster":"stopSlave")]);
+    }
+    return object;
   }
   function initK8S(){
+    //runCommands(true, machines[masterIndex(machines)], ["initK8S > initK8S 2>&1"]);
     runCommands(true, machines[masterIndex(machines)], ["initK8S"]);
+    return object;
   }
   function tutorial(){
-    runCommands(true, machines[masterIndex(machines)], ["tutorial"]);
+    runCommands(true, machines[masterIndex(machines)], ["tutorial > tutorial 2>&1"]);
+    return object;
   }
   
   
@@ -461,10 +482,13 @@ var cloud = (function (){
   object.rebootHadoop=rebootHadoop;
   object.testHadoop=testHadoop;
   object.http=http;
+  
   object.deployK8S=deployK8S;
-  object.K8S=K8S;
+  object.startK8S=startK8S;
+  object.stopK8S=stopK8S;
   object.initK8S=initK8S;
   object.tutorial=tutorial;
+  
   object.abc=null
 
   return object;
