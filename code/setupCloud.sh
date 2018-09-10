@@ -59,11 +59,12 @@ EOF
 function shutdown(){
   nic=`ip a | grep  -o "^.: en[^:]*" | awk '{print $2}'`
   ethtool -s $nic wol g
-  ethtool $nic
+  ethtool $nic | grep -i wake-on
   #此处必延时？不然无法再wol？测试发现加不加都不行，原来是cal.js调用的还是旧关机方法，不是此新的。
   #sleep 1
   nohup poweroff >/dev/null 2>&1 &
 }
+
 function closeFireWall(){
   setenforce 0
   /usr/sbin/sestatus -v
@@ -479,6 +480,7 @@ function setupRootK8sCommon(){
   #console
   setHostname $2
   setHOSTS $3
+  
 
   cat > /etc/yum.repos.d/virt7-docker-common-release.repo << EOF
 [virt7-docker-common-release]
@@ -488,12 +490,19 @@ gpgcheck=0
 EOF
 
   connect
-  #rm /etc/yum.repos.d/CentOS-Base.repo
+  rm /etc/yum.repos.d/CentOS-Base.repo
+  rm /etc/yum.repos.d/CentOS7-Base-163.repo
   #curl -o /etc/yum.repos.d/CentOS7-Base-163.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo
+  curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+ 
+   
+  pkill urlgr*
   #yum -y update --enablerepo=virt7-docker-common-release
   #yum clean metadata
-  yum -y install *rhsm*
-  yum --enablerepo=virt7-docker-common-release -y install kubernetes etcd flannel
+  yum clean all
+  yum makecache
+  #plink调用时，安装过程不出现进度条？putty才出现?
+  yum --enablerepo=virt7-docker-common-release -y install *rhsm* kubernetes etcd flannel
   disconnect
   
 #  echo sleep
@@ -519,6 +528,7 @@ function setupRootK8sSlaveOnly(){
 }
 function setupRootK8sMaster(){
   echo installing
+  cloaseSELinux
   setupRootK8sCommon $1 $2 $3
   setupRootK8sMasterOnly
   setupRootK8sSlaveOnly $2
@@ -526,6 +536,7 @@ function setupRootK8sMaster(){
 }
 function setupRootK8sSlave(){
   echo installing
+  cloaseSELinux
   setupRootK8sCommon $1 $2 $3  
   setupRootK8sSlaveOnly $2
   echo installed
@@ -533,6 +544,11 @@ function setupRootK8sSlave(){
 
 
 function startMasterSoftware(){
+  #mail
+  unset MAILCHECK
+  #ls -lth  /var/spool/mail/
+  #cat /dev/null > /var/spool/mail/root 
+
   for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld; do
       systemctl restart $SERVICES
       systemctl enable $SERVICES
@@ -546,32 +562,47 @@ function startSlaveSoftware(){
     systemctl status $SERVICES
   done
 }
+function cloaseSELinux(){
+  setenforce 0
+  /usr/sbin/sestatus -v
+  getenforce
+  #K8S需要firewalld服务? 莫名问题 似乎一定要开了再关
+  sleep 7
+  systemctl start firewalld
+  sleep 7
+  systemctl stop firewalld
+  systemctl disable firewalld
+}
 function startMaster(){
-  closeFireWall
+  cloaseSELinux
   startMasterSoftware
   startSlaveSoftware
 }
 function startSlave(){
-  closeFireWall
+  cloaseSELinux
   startSlaveSoftware
 }
 function stopMaster(){
-  for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld; do
+  for SERVICES in etcd kube-apiserver kube-controller-manager kube-scheduler flanneld kube-proxy kubelet flanneld docker; do
       systemctl stop $SERVICES
+      systemctl disable $SERVICES
   done
 }
 function stopSlave(){
   for SERVICES in kube-proxy kubelet flanneld docker; do
       systemctl stop $SERVICES
+      systemctl disable $SERVICES
   done
 }
 
 function downloadIaaSImage(){  
   connect
   #解决open /etc/docker/certs.d/registry.access.redhat.com/redhat-ca.crt: no such file or directory
-  yum install *rhsm* -y
+  #yum install *rhsm* -y
   #在下载pod-infrastructure时，经常超时
   BASE='docker.io/registry:2 registry.access.redhat.com/rhel7/pod-infrastructure docker.io/mritd/kubernetes-dashboard-amd64 docker.io/ist0ne/kubedns-amd64 docker.io/ist0ne/kube-dnsmasq-amd64 docker.io/ist0ne/exechealthz-amd64 docker.io/busybox'
+  for X in $BASE ; do docker pull $X;  done  
+  BASE='docker.io/ist0ne/kube-state-metrics:v1.0.1 giantswarm/tiny-tools dockermuenster/caddy:0.9.3 prom/node-exporter:v0.14.0 prom/prometheus:v1.7.0 grafana/grafana:4.2.0 phpmyadmin/phpmyadmin@sha256:95b005cf4c5f15ff670a31f576a50db8d164c6692752bda6176af3fea0e60812'
   for X in $BASE ; do docker pull $X;  done  
   disconnect
   
@@ -924,6 +955,953 @@ spec:
     restartPolicy: Always
 EOF
 
+  cat > monitoringNamespace.yaml << EOF
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+---
+EOF
+  kubectl create -f monitoringNamespace.yaml
+  
+}
+
+function abc(){
+  kubectl delete configmap "grafana-etc" --namespace=monitoring
+  kubectl delete -f monitor.yaml
+
+  cat > grafana.ini << EOF
+##################### Grafana Configuration Example #####################
+#
+# Everything has defaults so you only need to uncomment things you want to
+# change
+
+# possible values : production, development
+; app_mode = production
+
+# instance name, defaults to HOSTNAME environment variable value or hostname if HOSTNAME var is empty
+; instance_name = ${HOSTNAME}
+
+#################################### Paths ####################################
+[paths]
+# Path to where grafana can store temp files, sessions, and the sqlite3 db (if that is used)
+#
+;data = /var/lib/grafana
+#
+# Directory where grafana can store logs
+#
+;logs = /var/log/grafana
+#
+# Directory where grafana will automatically scan and look for plugins
+#
+;plugins = /var/lib/grafana/plugins
+
+#
+#################################### Server ####################################
+[server]
+# Protocol (http or https)
+;protocol = http
+
+# The ip address to bind to, empty will bind to all interfaces
+;http_addr =
+
+# The http port  to use
+;http_port = 3000
+
+# The public facing domain name used to access grafana from a browser
+;domain = localhost
+
+# Redirect to correct domain if host header does not match domain
+# Prevents DNS rebinding attacks
+;enforce_domain = false
+
+# The full public facing url you use in browser, used for redirects and emails
+# If you use reverse proxy and sub path specify full url (with sub path)
+;root_url = http://localhost:3000
+
+# Log web requests
+;router_logging = false
+
+# the path relative working path
+;static_root_path = public
+
+# enable gzip
+;enable_gzip = false
+
+# https certs & key file
+;cert_file =
+;cert_key =
+
+#################################### Database ####################################
+[database]
+# You can configure the database connection by specifying type, host, name, user and password
+# as seperate properties or as on string using the url propertie.
+
+# Either "mysql", "postgres" or "sqlite3", it's your choice
+type = sqlite3
+;type = mysql
+host = mariadb.mysql.svc.cluster.local:3306
+name = grafana
+user = root
+# If the password contains # or ; you have to wrap it with trippel quotes. Ex """#password;"""
+password = 9EEihZ6BfyP24k1zCW3S
+
+# Use either URL or the previous fields to configure the database
+# Example: mysql://user:secret@host:port/database
+;url =
+
+# For "postgres" only, either "disable", "require" or "verify-full"
+;ssl_mode = disable
+
+# For "sqlite3" only, path relative to data_path setting
+;path = grafana.db
+
+# Max conn setting default is 0 (mean not set)
+;max_conn =
+;max_idle_conn =
+;max_open_conn =
+
+
+#################################### Session ####################################
+[session]
+# Either "memory", "file", "redis", "mysql", "postgres", default is "file"
+;provider = file
+
+# Provider config options
+# memory: not have any config yet
+# file: session dir path, is relative to grafana data_path
+# postgres: user=a password=b host=localhost port=5432 dbname=c sslmode=disable
+;provider_config = sessions
+
+# Session cookie name
+;cookie_name = grafana_sess
+
+# If you use session in https only, default is false
+;cookie_secure = false
+
+# Session life time, default is 86400
+;session_life_time = 86400
+
+#################################### Data proxy ###########################
+[dataproxy]
+
+# This enables data proxy logging, default is false
+;logging = false
+
+
+#################################### Analytics ####################################
+[analytics]
+# Server reporting, sends usage counters to stats.grafana.org every 24 hours.
+# No ip addresses are being tracked, only simple counters to track
+# running instances, dashboard and error counts. It is very helpful to us.
+# Change this option to false to disable reporting.
+;reporting_enabled = true
+
+# Set to false to disable all checks to https://grafana.net
+# for new vesions (grafana itself and plugins), check is used
+# in some UI views to notify that grafana or plugin update exists
+# This option does not cause any auto updates, nor send any information
+# only a GET request to http://grafana.net to get latest versions
+;check_for_updates = true
+
+# Google Analytics universal tracking code, only enabled if you specify an id here
+;google_analytics_ua_id =
+
+#################################### Security ####################################
+[security]
+# default admin user, created on startup
+;admin_user = admin
+
+# default admin password, can be changed before first start of grafana,  or in profile settings
+;admin_password = admin
+
+# used for signing
+;secret_key = SW2YcwTIb9zpOOhoPsMm
+
+# Auto-login remember days
+;login_remember_days = 7
+;cookie_username = grafana_user
+;cookie_remember_name = grafana_remember
+
+# disable gravatar profile images
+;disable_gravatar = false
+
+# data source proxy whitelist (ip_or_domain:port separated by spaces)
+;data_source_proxy_whitelist =
+
+[snapshots]
+# snapshot sharing options
+;external_enabled = true
+;external_snapshot_url = https://snapshots-origin.raintank.io
+;external_snapshot_name = Publish to snapshot.raintank.io
+
+# remove expired snapshot
+;snapshot_remove_expired = true
+
+# remove snapshots after 90 days
+;snapshot_TTL_days = 90
+
+#################################### Users ####################################
+[users]
+# disable user signup / registration
+;allow_sign_up = true
+
+# Allow non admin users to create organizations
+;allow_org_create = true
+
+# Set to true to automatically assign new users to the default organization (id 1)
+;auto_assign_org = true
+
+# Default role new users will be automatically assigned (if disabled above is set to true)
+;auto_assign_org_role = Viewer
+
+# Background text for the user field on the login page
+;login_hint = email or username
+
+# Default UI theme ("dark" or "light")
+;default_theme = dark
+
+[auth]
+# Set to true to disable (hide) the login form, useful if you use OAuth, defaults to false
+;disable_login_form = false
+
+#################################### Anonymous Auth ##########################
+[auth.anonymous]
+# enable anonymous access
+;enabled = false
+
+# specify organization name that should be used for unauthenticated users
+;org_name = Main Org.
+
+# specify role for unauthenticated users
+;org_role = Viewer
+
+#################################### Github Auth ##########################
+[auth.github]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = user:email,read:org
+;auth_url = https://github.com/login/oauth/authorize
+;token_url = https://github.com/login/oauth/access_token
+;api_url = https://api.github.com/user
+;team_ids =
+;allowed_organizations =
+
+#################################### Google Auth ##########################
+[auth.google]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_client_id
+;client_secret = some_client_secret
+;scopes = https://www.googleapis.com/auth/userinfo.profile https://www.googleapis.com/auth/userinfo.email
+;auth_url = https://accounts.google.com/o/oauth2/auth
+;token_url = https://accounts.google.com/o/oauth2/token
+;api_url = https://www.googleapis.com/oauth2/v1/userinfo
+;allowed_domains =
+
+#################################### Generic OAuth ##########################
+[auth.generic_oauth]
+;enabled = false
+;name = OAuth
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = user:email,read:org
+;auth_url = https://foo.bar/login/oauth/authorize
+;token_url = https://foo.bar/login/oauth/access_token
+;api_url = https://foo.bar/user
+;team_ids =
+;allowed_organizations =
+
+#################################### Grafana.net Auth ####################
+[auth.grafananet]
+;enabled = false
+;allow_sign_up = true
+;client_id = some_id
+;client_secret = some_secret
+;scopes = user:email
+;allowed_organizations =
+
+#################################### Auth Proxy ##########################
+[auth.proxy]
+;enabled = false
+;header_name = X-WEBAUTH-USER
+;header_property = username
+;auto_sign_up = true
+;ldap_sync_ttl = 60
+;whitelist = 192.168.1.1, 192.168.2.1
+
+#################################### Basic Auth ##########################
+[auth.basic]
+;enabled = true
+
+#################################### Auth LDAP ##########################
+[auth.ldap]
+;enabled = false
+;config_file = /etc/grafana/ldap.toml
+;allow_sign_up = true
+
+#################################### SMTP / Emailing ##########################
+[smtp]
+;enabled = false
+;host = localhost:25
+;user =
+# If the password contains # or ; you have to wrap it with trippel quotes. Ex """#password;"""
+;password =
+;cert_file =
+;key_file =
+;skip_verify = false
+;from_address = admin@grafana.localhost
+;from_name = Grafana
+
+[emails]
+;welcome_email_on_sign_up = false
+
+#################################### Logging ##########################
+[log]
+# Either "console", "file", "syslog". Default is console and  file
+# Use space to separate multiple modes, e.g. "console file"
+;mode = console file
+
+# Either "trace", "debug", "info", "warn", "error", "critical", default is "info"
+;level = info
+
+# optional settings to set different levels for specific loggers. Ex filters = sqlstore:debug
+;filters =
+
+
+# For "console" mode only
+[log.console]
+;level =
+
+# log line format, valid options are text, console and json
+;format = console
+
+# For "file" mode only
+[log.file]
+;level =
+
+# log line format, valid options are text, console and json
+;format = text
+
+# This enables automated log rotate(switch of following options), default is true
+;log_rotate = true
+
+# Max line number of single file, default is 1000000
+;max_lines = 1000000
+
+# Max size shift of single file, default is 28 means 1 << 28, 256MB
+;max_size_shift = 28
+
+# Segment log daily, default is true
+;daily_rotate = true
+
+# Expired days of log file(delete after max days), default is 7
+;max_days = 7
+
+[log.syslog]
+;level =
+
+# log line format, valid options are text, console and json
+;format = text
+
+# Syslog network type and address. This can be udp, tcp, or unix. If left blank, the default unix endpoints will be used.
+;network =
+;address =
+
+# Syslog facility. user, daemon and local0 through local7 are valid.
+;facility =
+
+# Syslog tag. By default, the process' argv[0] is used.
+;tag =
+
+
+#################################### AMQP Event Publisher ##########################
+[event_publisher]
+;enabled = false
+;rabbitmq_url = amqp://localhost/
+;exchange = grafana_events
+
+;#################################### Dashboard JSON files ##########################
+[dashboards.json]
+;enabled = false
+;path = /var/lib/grafana/dashboards
+
+#################################### Alerting ############################
+[alerting]
+# Disable alerting engine & UI features
+;enabled = true
+# Makes it possible to turn off alert rule execution but alerting UI is visible
+;execute_alerts = true
+
+#################################### Internal Grafana Metrics ##########################
+# Metrics available at HTTP API Url /api/metrics
+[metrics]
+# Disable / Enable internal metrics
+;enabled           = true
+
+# Publish interval
+;interval_seconds  = 10
+
+# Send internal metrics to Graphite
+[metrics.graphite]
+# Enable by setting the address setting (ex localhost:2003)
+;address =
+;prefix = prod.grafana.%(instance_name)s.
+
+#################################### Internal Grafana Metrics ##########################
+# Url used to to import dashboards directly from Grafana.net
+[grafana_net]
+;url = https://grafana.net
+
+#################################### External image storage ##########################
+[external_image_storage]
+# Used for uploading images to public servers so they can be included in slack/email messages.
+# you can choose between (s3, webdav)
+;provider =
+
+[external_image_storage.s3]
+;bucket_url =
+;access_key =
+;secret_key =
+
+[external_image_storage.webdav]
+;url =
+;username =
+;password =
+EOF
+
+  cat > monitor.yaml << EOF
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: prometheus-node-exporter
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: node-exporter
+spec:
+  template:
+    metadata:
+      name: prometheus-node-exporter
+      labels:
+        app: prometheus
+        component: node-exporter
+    spec:
+      containers:
+      - image: prom/node-exporter:v0.14.0
+        name: prometheus-node-exporter
+        ports:
+        - name: prom-node-exp
+          #^ must be an IANA_SVC_NAME (at most 15 characters, ..)
+          containerPort: 9100
+          hostPort: 9100
+      hostNetwork: true
+      hostPID: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    prometheus.io/scrape: 'true'
+  name: prometheus-node-exporter
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: node-exporter
+spec:
+  clusterIP: None
+  ports:
+    - name: prometheus-node-exporter
+      port: 9100
+      protocol: TCP
+  selector:
+    app: prometheus
+    component: node-exporter
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-k8s
+  namespace: monitoring
+---
+apiVersion: extensions/v1beta1
+kind: DaemonSet
+metadata:
+  name: node-directory-size-metrics
+  namespace: monitoring
+  annotations:
+    description: |
+      This 'DaemonSet' provides metrics in Prometheus format about disk usage on the nodes.
+      The container 'read-du' reads in sizes of all directories below /mnt and writes that to '/tmp/metrics'. It only reports directories larger then '100M' for now.
+      The other container 'caddy' just hands out the contents of that file on request via 'http' on '/metrics' at port '9102' which are the defaults for Prometheus.
+      These are scheduled on every node in the Kubernetes cluster.
+      To choose directories from the node to check, just mount them on the 'read-du' container below '/mnt'.
+spec:
+  template:
+    metadata:
+      labels:
+        app: node-directory-size-metrics
+      annotations:
+        prometheus.io/scrape: 'true'
+        prometheus.io/port: '9102'
+        description: |
+          This 'Pod' provides metrics in Prometheus format about disk usage on the node.
+          The container 'read-du' reads in sizes of all directories below /mnt and writes that to '/tmp/metrics'. It only reports directories larger then '100M' for now.
+          The other container 'caddy' just hands out the contents of that file on request on '/metrics' at port '9102' which are the defaults for Prometheus.
+          This 'Pod' is scheduled on every node in the Kubernetes cluster.
+          To choose directories from the node to check just mount them on 'read-du' below '/mnt'.
+    spec:
+      containers:
+      - name: read-du
+        image: giantswarm/tiny-tools
+        imagePullPolicy: Always
+        # FIXME threshold via env var
+        # The
+        command:
+        - fish
+        - --command
+        - |
+          touch /tmp/metrics-temp
+          while true
+            for directory in (du --bytes --separate-dirs --threshold=100M /mnt)
+              echo \$directory | read size path
+              echo "node_directory_size_bytes{path=\"\$path\"} \$size" \
+                >> /tmp/metrics-temp
+            end
+            mv /tmp/metrics-temp /tmp/metrics
+            sleep 300
+          end
+        volumeMounts:
+        - name: host-fs-var
+          mountPath: /mnt/var
+          readOnly: true
+        - name: metrics
+          mountPath: /tmp
+      - name: caddy
+        image: dockermuenster/caddy:0.9.3
+        command:
+        - "caddy"
+        - "-port=9102"
+        - "-root=/var/www"
+        ports:
+        - containerPort: 9102
+        volumeMounts:
+        - name: metrics
+          mountPath: /var/www
+      volumes:
+      - name: host-fs-var
+        hostPath:
+          path: /var
+      - name: metrics
+        emptyDir:
+          medium: Memory
+---
+apiVersion: v1
+data:
+  prometheus.yaml: |
+    global:
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      evaluation_interval: 10s
+    rule_files:
+      - "/etc/prometheus-rules/*.rules"
+    scrape_configs:
+      - job_name: 'http'
+        scrape_interval: 5s
+        static_configs:
+          - targets: ['localhost:9090', '172.16.2.228:8080', '172.16.2.228:2379']
+
+      
+      - job_name: 'cadvisor'
+        kubernetes_sd_configs:
+          - api_server: 'http://172.16.2.228:8080'
+            role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - source_labels: [__meta_kubernetes_role]
+            action: replace
+            target_label: kubernetes_role
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '\${1}:10255'
+            target_label: __address__
+      - job_name: 'node-exporter'
+        kubernetes_sd_configs:
+        - api_server: 'http://172.16.2.228:8080'
+          role: node
+        relabel_configs:
+        - source_labels: [__address__]
+          regex: '(.*):10250'
+          replacement: '\${1}:9100'
+          target_label: __address__   
+
+
+      - job_name: kubernetes-nodes-cadvisor
+        scrape_interval: 10s
+        scrape_timeout: 10s
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+        - api_server: 'http://172.16.2.228:8080'
+          role: node
+        relabel_configs:
+          - action: labelmap
+            regex: __meta_kubernetes_node_label_(.+)
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '\${1}:10255'
+            target_label: __address__
+        metric_relabel_configs:
+          - action: replace
+            source_labels: [id]
+            regex: '^/machine\\.slice/machine-rkt\\\\x2d([^\\\\]+)\\\\.+/([^/]+)\\.service\$'
+            target_label: rkt_container_name
+            replacement: '\${2}-\${1}'
+          - action: replace
+            source_labels: [id]
+            regex: '^/system\\.slice/(.+)\\.service\$'
+            target_label: systemd_service_name
+            replacement: '\${1}'
+
+
+      # https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml#L37
+      - job_name: 'kubernetes-nodes'
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        kubernetes_sd_configs:
+          - role: node
+            api_server: 'http://172.16.2.228:8080'
+        relabel_configs:
+          - source_labels: [__address__]
+            regex: '(.*):10250'
+            replacement: '\${1}:10255'
+            target_label: __address__
+
+      # https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml#L79
+      - job_name: 'kubernetes-endpoints'
+        kubernetes_sd_configs:
+          - role: endpoints
+            api_server: 'http://172.16.2.228:8080'
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_scheme]
+            action: replace
+            target_label: __scheme__
+            regex: (https?)
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_service_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: (.+)(?::\d+);(\d+)
+            replacement: \$1:\$2
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            action: replace
+            target_label: kubernetes_name
+
+      # https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml#L119
+      - job_name: 'kubernetes-services'
+        metrics_path: /probe
+        params:
+          module: [http_2xx]
+        kubernetes_sd_configs:
+          - role: service
+            api_server: 'http://172.16.2.228:8080'
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_service_annotation_prometheus_io_probe]
+            action: keep
+            regex: true
+          - source_labels: [__address__]
+            target_label: __param_target
+          - target_label: __address__
+            replacement: blackbox
+          - source_labels: [__param_target]
+            target_label: instance
+          - action: labelmap
+            regex: __meta_kubernetes_service_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_service_name]
+            target_label: kubernetes_name
+
+      # https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml#L156
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+            api_server: 'http://172.16.2.228:8080'
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: (.+):(?:\d+);(\d+)
+            replacement: \${1}:\${2}
+            target_label: __address__
+          - action: labelmap
+            regex: __meta_kubernetes_pod_label_(.+)
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
+          - source_labels: [__meta_kubernetes_pod_name]
+            action: replace
+            target_label: kubernetes_pod_name
+          - source_labels: [__meta_kubernetes_pod_container_port_number]
+            action: keep
+            regex: 9\d{3}
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: prometheus-core
+  namespace: monitoring
+---
+apiVersion: v1
+data:
+  cpu-usage.rules: |
+    ALERT NodeCPUUsage
+      IF (100 - (avg by (instance) (irate(node_cpu{name="node-exporter",mode="idle"}[5m])) * 100)) > 75
+      FOR 2m
+      LABELS {
+        severity="page"
+      }
+      ANNOTATIONS {
+        SUMMARY = "{{\$labels.instance}}: High CPU usage detected",
+        DESCRIPTION = "{{\$labels.instance}}: CPU usage is above 75% (current value is: {{ \$value }})"
+      }
+  instance-availability.rules: |
+    ALERT InstanceDown
+      IF up == 0
+      FOR 1m
+      LABELS { severity = "page" }
+      ANNOTATIONS {
+        summary = "Instance {{ \$labels.instance }} down",
+        description = "{{ \$labels.instance }} of job {{ \$labels.job }} has been down for more than 1 minute.",
+      }
+  low-disk-space.rules: |
+    ALERT NodeLowRootDisk
+      IF ((node_filesystem_size{mountpoint="/root-disk"} - node_filesystem_free{mountpoint="/root-disk"} ) / node_filesystem_size{mountpoint="/root-disk"} * 100) > 75
+      FOR 2m
+      LABELS {
+        severity="page"
+      }
+      ANNOTATIONS {
+        SUMMARY = "{{\$labels.instance}}: Low root disk space",
+        DESCRIPTION = "{{\$labels.instance}}: Root disk usage is above 75% (current value is: {{ \$value }})"
+      }
+
+    ALERT NodeLowDataDisk
+      IF ((node_filesystem_size{mountpoint="/data-disk"} - node_filesystem_free{mountpoint="/data-disk"} ) / node_filesystem_size{mountpoint="/data-disk"} * 100) > 75
+      FOR 2m
+      LABELS {
+        severity="page"
+      }
+      ANNOTATIONS {
+        SUMMARY = "{{\$labels.instance}}: Low data disk space",
+        DESCRIPTION = "{{\$labels.instance}}: Data disk usage is above 75% (current value is: {{ \$value }})"
+      }
+  mem-usage.rules: |
+    ALERT NodeSwapUsage
+      IF (((node_memory_SwapTotal-node_memory_SwapFree)/node_memory_SwapTotal)*100) > 75
+      FOR 2m
+      LABELS {
+        severity="page"
+      }
+      ANNOTATIONS {
+        SUMMARY = "{{\$labels.instance}}: Swap usage detected",
+        DESCRIPTION = "{{\$labels.instance}}: Swap usage usage is above 75% (current value is: {{ \$value }})"
+      }
+
+    ALERT NodeMemoryUsage
+      IF (((node_memory_MemTotal-node_memory_MemFree-node_memory_Cached)/(node_memory_MemTotal)*100)) > 75
+      FOR 2m
+      LABELS {
+        severity="page"
+      }
+      ANNOTATIONS {
+        SUMMARY = "{{\$labels.instance}}: High memory usage detected",
+        DESCRIPTION = "{{\$labels.instance}}: Memory usage is above 75% (current value is: {{ \$value }})"
+      }
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: prometheus-rules
+  namespace: monitoring
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: prometheus-core
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: core
+spec:
+  replicas: 1
+  template:
+    metadata:
+      name: prometheus-main
+      labels:
+        app: prometheus
+        component: core
+    spec:
+      serviceAccountName: prometheus-k8s
+      containers:
+      - name: prometheus
+        image: prom/prometheus:v1.7.0
+        args:
+          - '-storage.local.retention=12h'
+          - '-storage.local.memory-chunks=500000'
+          - '-config.file=/etc/prometheus/prometheus.yaml'
+          - '-alertmanager.url=http://alertmanager:9093/'
+        ports:
+        - name: webui
+          containerPort: 9090
+        resources:
+          requests:
+            cpu: 500m
+            memory: 500M
+          limits:
+            cpu: 500m
+            memory: 500M
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/prometheus
+        - name: rules-volume
+          mountPath: /etc/prometheus-rules
+      volumes:
+      - name: config-volume
+        configMap:
+          name: prometheus-core
+      - name: rules-volume
+        configMap:
+          name: prometheus-rules
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+  labels:
+    app: prometheus
+    component: core
+  annotations:
+    prometheus.io/scrape: 'true'
+spec:
+  type: NodePort
+  ports:
+    - port: 9090
+      nodePort: 30475
+      targetPort: 9090
+      protocol: TCP
+      name: webui
+  selector:
+    app: prometheus
+    component: core
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: grafana-core
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: core
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: grafana
+        component: core
+    spec:
+      containers:
+      - image: grafana/grafana:4.2.0
+        name: grafana-core
+        imagePullPolicy: IfNotPresent
+        # env:
+        resources:
+          # keep request = limit to keep this container in guaranteed class
+          limits:
+            cpu: 100m
+            memory: 100Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        env:
+          # The following env variables set up basic auth twith the default admin user and admin password.
+          - name: GF_AUTH_BASIC_ENABLED
+            value: "true"
+          - name: GF_AUTH_ANONYMOUS_ENABLED
+            value: "false"
+          # - name: GF_AUTH_ANONYMOUS_ORG_ROLE
+          #   value: Admin
+          # does not really work, because of template variables in exported dashboards:
+          # - name: GF_DASHBOARDS_JSON_ENABLED
+          #   value: "true"
+        readinessProbe:
+          httpGet:
+            path: /login
+            port: 3000
+          # initialDelaySeconds: 30
+          # timeoutSeconds: 1
+        volumeMounts:
+        - name: grafana-etc-volume
+          mountPath: /etc/grafana/
+          #readOnly: true
+      volumes:
+        - name: grafana-etc-volume
+          configMap:
+            name: grafana-etc
+            items:
+            - key: grafana.ini
+              path: grafana.ini
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+  labels:
+    app: grafana
+    component: core
+spec:
+  type: NodePort
+  ports:
+    - port: 3000
+      nodePort: 30008
+      targetPort: 3000
+  selector:
+    app: grafana
+    component: core
+EOF
+  kubectl create configmap "grafana-etc" --from-file=grafana.ini --namespace=monitoring
+  kubectl create -f monitor.yaml
+  
+  
+  kubectl describe pods/`kubectl get pods --all-namespaces | grep 'prometheus-node-exporter' | tail -n 1 | awk '{print $2}'` --namespace="monitoring"
+  kubectl -n monitoring  get svc 
+  
+  sleep 7
 }
 
 function initK8S(){
@@ -932,7 +1910,7 @@ function initK8S(){
   
   #skydns-rc skydns-svc #已合二为一
   
-  for SERVICES in kubernetes-dashboard kube-dns_14 busybox ; do
+  for SERVICES in kubernetes-dashboard kube-dns_14 monitor busybox ; do
     kubectl delete -f $SERVICES.yaml
     kubectl create -f $SERVICES.yaml  
     #kubectl apply -f nginx.yaml
@@ -1388,7 +2366,8 @@ dhcp-range= ens32,172.16.2.3,172.16.2.30,255.255.255.0,1h
 #dhcp-match=set:bios,60,PXEClient:Arch:00000
 #dhcp-match=set:efi32,60,PXEClient:Arch:00006
 dhcp-match=set:bios,60,PXEClient
-dhcp-boot=pxelinux.0,pxeserver,$SERVER
+#dhcp-boot=pxelinux.0,pxeserver,$SERVER
+dhcp-boot=grldr.0,pxeserver,$SERVER
 # Gateway 以本机为网关，要开启转发和nat
 dhcp-option=3,$SERVER
 # DNS
@@ -1499,6 +2478,8 @@ title halt
 halt
 EOF
 
+CONTROL=$1
+
   cat > /var/ftp/pub/abc.cfg << EOF
 install
 #reboot
@@ -1521,7 +2502,7 @@ part / --fstype="xfs" --grow --size=1
 %packages --nobase
 %end
 %pre
-#curl http://172.16.2.70:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
+#curl http://$CONTROL:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
 %end
 %post --interpreter=/bin/bash --log=/root/ks-post.log
 #wget下载hadoop文件的复制和配制脚本，并执行？
@@ -1529,8 +2510,8 @@ part / --fstype="xfs" --grow --size=1
 #wget时传参数，服务端返回特定于该物理结点的执行脚本。
 #脚本只是复制文件和修改文件
 cat >> /etc/crontab << EOFA
-* * * * * root ping -c 3 172.16.2.70 >> /root/3.txt
-* * * * * root curl http://172.16.2.70:3/?MAC=\\\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \\\$2}' | sed 's/://g')
+* * * * * root ping -c 3 $CONTROL >> /root/3.txt
+* * * * * root curl http://$CONTROL:3/?MAC=\\\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \\\$2}' | sed 's/://g')
 EOFA
 #systemctl restart crond
 #这里\$要转义
@@ -1539,7 +2520,21 @@ echo \$nic
 ethtool -s \$nic wol g
 ethtool \$nic
 ls / 2>&1 >> /root/post-install.log
-curl http://172.16.2.70:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
+
+#此时的IP不让上处网，得NAT
+#curl "http://202.193.80.124/" -H "Pragma: no-cache" -H "Origin: http://202.193.80.124" -H "Accept-Encoding: gzip, deflate" -H "Accept-Language: zh-CN,zh;q=0.8" -H "Upgrade-Insecure-Requests: 1" -H "User-Agent: Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.110 Safari/537.36" -H "Content-Type: application/x-www-form-urlencoded" -H "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8" -H "Cache-Control: no-cache" -H "Referer: http://202.193.80.124/" -H "Connection: keep-alive" --data "DDDDD=xxl&upass=d850bebc59e945da24c95419d8182014123456781&R1=0&R2=1&para=00&0MKKey=123456" --compressed | grep "Please don't forget to log out after you have finished."
+#rm /etc/yum.repos.d/CentOS-Base.repo
+#rm /etc/yum.repos.d/CentOS7-Base-163.repo
+#curl -o /etc/yum.repos.d/CentOS7-Base-163.repo http://mirrors.163.com/.help/CentOS7-Base-163.repo
+#curl -o /etc/yum.repos.d/CentOS-Base.repo http://mirrors.aliyun.com/repo/Centos-7.repo
+
+#pkill urlgr*
+#yum clean all
+#yum makecache
+
+
+curl http://$CONTROL:3/?MAC=\$(ip a | grep -A 1 "^.: en[^:]*" | tail -n 1 | awk '{print \$2}' | sed 's/://g')
+
 %end
 EOF
 

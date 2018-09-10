@@ -1,8 +1,10 @@
 [
-    {"IP":"172.16.2.179", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"},
+    {"IP":"172.16.2.228", "isMaster":true, "MAC":"000c299bfc47", "path":"D:\\wangqi\\src\\vm\\LabCloud3\\LabCloud.vmx"}
+    /* 
+    {"IP":"172.16.2.179", "isMaster":true, "isPhysical": true, "MAC":"E0CB4EC8CF2E"}
+    ,
     {"IP":"172.16.2.38", "isPhysical": true, "MAC":"60a44cad55fb"}
     ,
     {"IP":"172.16.2.45", "MAC":"000c29598135", "NC":"172.16.2.80", "vmware":"D:\\VMware\\vmware.exe", "path":"D:\\VMspace\\LabCloud\\LabCloud.vmx"}
-    /* 
     */
   ]

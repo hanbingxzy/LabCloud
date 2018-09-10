@@ -89,8 +89,8 @@ var translator = (function(){
 var cloud = (function (){
   /*如何收集结点信息是个问题.*/
   var machines = translator.loadJson("config.json");
-  var pxeMachine={"IP":"172.16.2.231", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
-  var originIP = "172.16.2.70";
+  var pxeMachine={"IP":"172.16.2.230", "path":"D:\\wangqi\\src\\vm\\K8S\\K8S.vmx"};
+  var originIP = "172.16.2.121";
   var originPWD = "123456";
   var pwd = "labcloud"
   var vmware = "D:\\wangqi\\cache\\yang\\vm10\\vmware.exe";
@@ -372,10 +372,12 @@ var cloud = (function (){
       if(isRunning(machines[i])) startK8SNode(machines, i);
     }
     var shell = WScript.CreateObject("WScript.Shell");
+    /*
     shell.run("cmd /c start http://node0:8080", 1, true);
     shell.run("cmd /c start http://node0:8080/api/v1/proxy/namespaces/kube-system/services/kubernetes-dashboard", 1, true);    
     shell.run("cmd /c start http://node0:8080/api/v1/proxy/namespaces/kube-system/services/kube-dns", 1, true);
     shell.run("cmd /c start http://node0:5000/v2/_catalog", 1, true);    
+    */
     return object;
   }
   function stopK8S(){
@@ -418,7 +420,7 @@ var cloud = (function (){
       sleep(7000);
     }
     PXESTATE(machine);
-    runCommands(true, machine, ["startPXEServer  > 1 2>&1"]);
+    runCommands(true, machine, ["startPXEServer "+originIP+" > 1 2>&1"]);
     return object;
   }
   function stopPXEServer(){
@@ -451,6 +453,11 @@ var cloud = (function (){
   function sleep(i){
     WScript.Echo("Sleeping for "+i+"ms.");
     WScript.Sleep(i);
+    return object;
+  }
+  
+  function abc(){
+    runCommands(true, machines[masterIndex(machines)], ["abc"]);
     return object;
   }
   
@@ -489,7 +496,7 @@ var cloud = (function (){
   object.initK8S=initK8S;
   object.tutorial=tutorial;
   
-  object.abc=null
+  object.abc=abc;
 
   return object;
 })();
